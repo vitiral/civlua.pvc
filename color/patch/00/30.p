@@ -1,6 +1,6 @@
-
+fix rebase
 --- cmd/pvc/pvc.lua
 +++ cmd/pvc/pvc.lua
-@@ -754 +754 @@
--    io.fmt:notify('error', 'squashing ids [%s - %s] is a noop', bot, top)
-+    io.fmt:styled('error', 'squashing ids [%s - %s] is a noop', bot, top)
+@@ -1006 +1006 @@
+-  M.rebase(br, M.rawtip(M.branchpath(P, base)))
++  M.rebase(P, br, M.rawtip(M.branchDir(P, base)))

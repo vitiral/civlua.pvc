@@ -1,9 +1,13 @@
-better error message for empty files
---- cmd/pvc/pvc/unix.lua
-+++ cmd/pvc/pvc/unix.lua
-@@ -56 +56,4 @@
--  error((a or b)..' is empty (https://stackoverflow.com/questions/44427545)')
-+  -- https://stackoverflow.com/questions/44427545]])
-+  error((a or b)..[[ is empty, which pvc does not support.
-+Solution: Add a newline (or any other content) to the file,
-+          or delete the file.]])
+start working on amend
+--- cmd/pvc/pvc.lua
++++ cmd/pvc/pvc.lua
+@@ -1064,0 +1065,9 @@
++--- [$amend -- new commit message]: amend the current patch,
++--- rebasing the later patches on top.
++M.main.amend = function(args)
++  -- (1): create new brach_amend at current id
++  -- (2): commit change to branch_amend
++  -- (3): rebase branch_amend onto branch
++  -- (4): squash the commit into the previous and update description
++  -- (5): move branch -> backup/ and branch_amend
++end

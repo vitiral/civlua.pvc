@@ -1,12 +1,4 @@
-need to remove cxt.Writer
-working on removing cxt.Writer, making progress
-fix cxt, would like to keep cleaning up
-
-remove cxt.Writer.indent
-adding snap
-
-minor pvc fix
-improve cxt.term and remove cxt.Writer.write
+reduce cxt.Writer and improve cxt.term
 --- README.cxt
 +++ README.cxt
 @@ -57,2 +57,2 @@

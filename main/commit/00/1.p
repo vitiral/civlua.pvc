@@ -1,10 +1,10 @@
-initial commit
+initial commit after patch - rename
 --- .pvcpaths
 +++ .pvcpaths
 @@ -0,0 +1,2 @@
 +.gitignore
 +.pvcignore
-@@ -1,0 +4,191 @@
+@@ -1,0 +4,187 @@
 +Makefile
 +PKG.lua
 +README.cxt
@@ -66,17 +66,13 @@ initial commit
 +cmd/pvc/testdata/story.txt.3d
 +cmd/pvc/testdata/story.txt.4d
 +cmd/pvc/testdata/story.txt.5
-+lib/civdb/PKG.lua
-+lib/civdb/README.cxt
-+lib/civdb/civdb.lua
-+lib/civdb/civdb/HashIdx.lua
-+lib/civdb/test.lua
 +lib/civix/.gitignore
 +lib/civix/Makefile
 +lib/civix/PKG.lua
 +lib/civix/README.cxt
 +lib/civix/civix.lua
 +lib/civix/civix/lib.c
++lib/civix/civix/testing.lua
 +lib/civix/test.lua
 +lib/civtest/PKG.lua
 +lib/civtest/README.cxt
@@ -108,6 +104,7 @@ initial commit
 +lib/fmt/README.cxt
 +lib/fmt/binary.lua
 +lib/fmt/fmt.lua
++lib/fmt/show.lua
 +lib/fmt/test.lua
 +lib/lap/PKG.lua
 +lib/lap/README.cxt
@@ -187,7 +184,6 @@ initial commit
 +ui/asciicolor/PKG.lua
 +ui/asciicolor/README.cxt
 +ui/asciicolor/asciicolor.lua
-+ui/asciicolor/asciicolor/style.lua
 +ui/asciicolor/test.lua
 +ui/vt100/PKG.lua
 +ui/vt100/README.cxt
@@ -234,16 +230,18 @@ initial commit
 
 --- /dev/null
 +++ Makefile
-@@ -0,0 +1,48 @@
+@@ -0,0 +1,50 @@
 +
 +LUA_VERSION = lua
-+LUA = lua -e "require'pkglib'()"
++LUA_EX = $(LUA_VERSION)
++LUA = $(LUA_EX) -e "require'pkglib'()"
 +
 +.PHONY: ele
 +
 +all: test demo
 +
 +test: build
++	which $(LUA_EX)
 +	mkdir -p ./.out/
 +	# make test
 +	$(LUA) test.lua
@@ -251,7 +249,7 @@ initial commit
 +
 +demo: build
 +	$(PRETEST) $(LUA) ui/vt100/demo.lua
-+	# $(PRETEST) $(LUA) cmd/ele/demo_term.lua
++	# $(PRETEST) $(LUA) cmd/ele/tests/test_term.lua
 +
 +build: metaty fd pod civix smol
 +
@@ -268,8 +266,8 @@ initial commit
 +	cd lib/civix && make build LUA_VERSION=$(LUA_VERSION)
 +
 +smol: lib/smol/smol.c
-+	cd lib/smol && make test  LUA_VERSION=$(LUA_VERSION)
 +	cd lib/smol && make build LUA_VERSION=$(LUA_VERSION)
++	# cd lib/smol && make test  LUA_VERSION=$(LUA_VERSION)
 +
 +ele: build
 +	$(LUA) cmd/ele/ele.lua
@@ -286,7 +284,7 @@ initial commit
 
 --- /dev/null
 +++ PKG.lua
-@@ -0,0 +1,59 @@
+@@ -0,0 +1,58 @@
 +name    = 'civ'
 +version = '0.1-0'
 +url     = 'git+http://github.com/civboot/civlua'
@@ -314,7 +312,6 @@ initial commit
 +  -- data storage / vcs
 +  'lib/luck',    -- user configuration
 +  'lib/smol',    -- binary diffs and compression
-+  'lib/civdb',   -- minimalist CRUD database
 +  'lib/vcds',
 +
 +  -- Interacting with the user
@@ -349,7 +346,7 @@ initial commit
 
 --- /dev/null
 +++ README.cxt
-@@ -0,0 +1,189 @@
+@@ -0,0 +1,220 @@
 +[!you can see a rendered version of this document in [/API.html]!]
 +civlua: a minimalist, self-documenting and public domain tech stack.
 +
@@ -360,7 +357,12 @@ initial commit
 +[{:h2}Installation]
 +Install Lua with [$apt-get install lua], [$brew lua] or however you normally
 +install software, or follow directions at [<https://lua.org/start.html>]. You
-+also need standard build tools (i.e. [$make], [$gcc]).
++also need standard build tools (i.e. [$make], [$gcc]) and [$rcs] (for [$merge]
++etc, required for [<#pvc>]).
++
++["on NetBSD you must have Lua installed via pkgsrc
++ (aka [$pkgin install lua5.4]) as base Lua doesn't link pthread.
++]
 +
 +Then run the following (or equivalent):
 +
@@ -371,16 +373,26 @@ initial commit
 +
 +# add these lines to .bashrc
 +cat >> ~/.bashrc << EOF
-+LUA_PATH="$PWD/lib/pkg/?.lua"
-+LUA_PKGS="$PWD/"
++export LUA_PATH="$PWD/lib/pkg/?.lua"
++export LUA_PKGS="$PWD/"
 +
-+alias civ="$PWD/civ.lua"
++# use your lua version (or even full path)
++alias civ="lua5.3 $PWD/civ.lua"
 +EOF
++
++source ~/.bashrc     # reload your config
 +]##
 +
-+You can now run any civlua script with, i.e. [$civ help ff].
++You should now be able to run any civlua script with [$civ <cmd>], i.e.
++[$civ doc string.find].
 +
-+["See [<#pkg-install>] for more details regarding [$PKG.lua] dependencies.]
++I also add [$alias ,=civ] to my bashrc, allowing for i.e. [$, help ff]. Note
++that [$civ.lua] can load and run ANY lua module in your [$LUA_PKGS] (not just
++civlua ones), so this is a nice shortcut for your personal scripts.
++
++["See [<#pkg-install>] for more details regarding [$PKG.lua] dependencies,
++  especially if you are not calling the [$civ.lua] loader.
++]
 +
 +[{:h3}Testing]
 +After installation, it's a good idea to run the tests to make sure civlua is
@@ -489,6 +501,22 @@ initial commit
 +  concrete data (including tables) to/from JSON and an extension called LSON.
 +]
 +
++[{h3 name=civ-runner}Writing (and running) your own commands]
++After following [<#Installation>] you can run your own commands.
++This is because [$civ.lua] (after some minor setup) simply runs the
++following:
++
++[{## lang=lua}
++require(cmd).main(shim.parse(arg))
++]##
++
++So it directly calls your module/package's [$main] function.
++See [<#Package_shim>] for full documentation on writing your own
++scripts.
++
++You can then run your package's main function (with arguments pre-parsed into a
++table) by adding it to [$LUA_PKGS] and calling [$civ mypackage].
++
 +[{h3}Styling]
 +The following define an interface to enable color output across any device,
 +including: normal terminal, Ele (the civlua text editor) and html syntax
@@ -549,7 +577,7 @@ initial commit
 +**[this link][rendered]** or by downloading this repository and going to
 +`file:///home/path/to/civlua/README.html` directly in your browser.
 +
-+[rendered]: https://htmlpreview.github.io/?https://github.com/civboot/civlua/main/README.html
++[rendered]: https://html-preview.github.io/?url=https://github.com/civboot/civlua/main/README.html
 +
 +
 
@@ -583,25 +611,24 @@ initial commit
 
 --- /dev/null
 +++ civ.lua
-@@ -0,0 +1,43 @@
-+#!/usr/bin/env -S lua -e "require'pkglib'()"
-+local G = G or _G
+@@ -0,0 +1,42 @@
++#!/usr/bin/env -S lua
++require'pkglib'(); local G = assert(G)
 +
-+-- civ module: packaged dev environment
++-- civ.lua: convieience command runner and environment config.
 +local M = G.mod'civ'; G.MAIN = G.MAIN or M
 +G.METATY_CHECK = true
 +
 +local fmt = require'fmt'
 +local fd  = require'fd'
 +local ac  = require'asciicolor'
-+local acs = require'asciicolor.style'
 +local shim = require'shim'
 +
 +--- create a Fmt with sensible defaults for scripts
 +--- Typically [$t.to] is unset (default=stderr) or set to stdout.
 +M.Fmt = function(t)
 +  t.to = t.to or io.stderr
-+  return acs.Fmt(t)
++  return ac.Fmt(t)
 +end
 +
 +M.setupFmt = function(to, user)
@@ -1024,7 +1051,7 @@ initial commit
 
 --- /dev/null
 +++ cmd/cxt/cxt.lua
-@@ -0,0 +1,482 @@
+@@ -0,0 +1,484 @@
 +-- TODO:
 +--   [1Header block]
 +local M = mod and mod'cxt' or {}
@@ -1034,7 +1061,7 @@ initial commit
 +local fmt = require'fmt'
 +local ds  = require'ds'
 +local lines = require'lines'
-+local civtest = require'civtest'
++local T = require'civtest'
 +local add, sfmt, srep = table.insert, string.format, string.rep
 +local pop = table.remove
 +local max = math.max
@@ -1463,7 +1490,7 @@ initial commit
 +M.assertParse = function(dat, expected, dbg) --> node
 +  local node, p = M.parse(dat, dbg)
 +  node = M.parsedStrings(p, node)
-+  civtest.assertEq(expected, node)
++  T.eq(expected, node)
 +  return node
 +end
 +
@@ -1484,7 +1511,7 @@ initial commit
 +M.Writer = mty'Writer' {
 +  'src', 'to',
 +  'indent[int]',
-+  'style [string]: see asciicolor.style',
++  'style [string]: see asciicolor.Style',
 +  'config [Config]', config=M.Config{}
 +}
 +M.Writer.fromParser = function(ty_, p, to)
@@ -1498,10 +1525,12 @@ initial commit
 +  if type(l) ~= 'number' then return end
 +  fmt.errorf('index cxt.Writer: %s', l)
 +end
++-- TODO: remove this
 +M.Writer.__newindex = function(w, l, line)
 +  if type(l) ~= 'number' then return rawset(w, l, line) end
-+  if w.style then w.to:styled(w.style, line)
-+  else            w.to[l] = line end
++  if w.style        then w.to:styled(w.style, line)
++  elseif w.to.write then w.to:write(line)
++  else                   w.to[l] = line end
 +end
 +M.Writer.__len = function(w) return #w.to end
 +M.Writer.level = function(w, add) return w.to:level(add) end
@@ -1521,7 +1550,7 @@ initial commit
 +local pegl = require'pegl'
 +local cxt  = require'cxt'
 +local shim = require'shim'
-+local civtest = require'civtest'
++local T = require'civtest'
 +local push, sfmt = table.insert, string.format
 +local ds    = require'ds'
 +local lines = require'lines'
@@ -1736,7 +1765,7 @@ initial commit
 +  local node, p = cxt.parse(cxtDat, dbg)
 +  local w = cxt.Writer:fromParser(p)
 +  M.serialize(w, node)
-+  civtest.assertEq(expectedHtml, w.to)
++  T.eq(expectedHtml, w.to)
 +end
 +
 +M.main = function(args)
@@ -1762,7 +1791,7 @@ initial commit
 
 --- /dev/null
 +++ cmd/cxt/cxt/term.lua
-@@ -0,0 +1,140 @@
+@@ -0,0 +1,148 @@
 +G = G or _G
 +--- cxt for the terminal, either plain text or vt100/etc
 +local M = mod'cxt.term'
@@ -1773,7 +1802,6 @@ initial commit
 +local shim = require'shim'
 +local pegl = require'pegl'
 +local cxt  = require'cxt'
-+local style = require'asciicolor.style'
 +local fd = require'fd'
 +local log = require'ds.log'
 +local lines = require'lines'
@@ -1877,7 +1905,16 @@ initial commit
 +  end
 +
 +  w.style = M.STYLES[kind] or node.style or prevSty
-+  for _, n in ipairs(node) do M.serialize(w, n) end
++  if #node == 0 then
++    local ps = w.style;
++    if node.path then
++      w.style = 'path'; M.serialize(w, node.path); w.style = ps
++    elseif node.href then
++      w.style = 'ref'; M.serialize(w, node.href);  w.style = ps
++    end
++  else
++    for _, n in ipairs(node) do M.serialize(w, n) end
++  end
 +  w.style = prevSty
 +end
 +
@@ -1906,7 +1943,7 @@ initial commit
 
 --- /dev/null
 +++ cmd/cxt/test.lua
-@@ -0,0 +1,382 @@
+@@ -0,0 +1,381 @@
 +METATY_CHECK = true
 +
 +local pkg = require'pkglib'
@@ -1924,8 +1961,7 @@ initial commit
 +local M = require'cxt'
 +local term = require'cxt.term'
 +local html = require'cxt.html'
-+
-+local test, assertEq; ds.auto'civtest'
++local T = require'civtest'
 +
 +local RootSpec, Token
 +local testing, EMPTY, EOF
@@ -1933,27 +1969,27 @@ initial commit
 +
 +local KW, N, NUM, HEX; ds.auto(testing)
 +
-+test('escape', function()
-+  assertEq('foo \\[bar\\] \\\\ baz', M.escape'foo [bar] \\ baz')
-+end)
++T.escape = function()
++  T.eq('foo \\[bar\\] \\\\ baz', M.escape'foo [bar] \\ baz')
++end
 +
-+test('code', function()
++T.code = function()
 +  local hub = M._hasUnbalancedBrackets
-+  assertEq(false, hub'abc')
-+  assertEq(false, hub'[[a]b]')
-+  assertEq(true, hub'['); assertEq(true, hub']')
-+  assertEq(true, hub'[]]')
++  T.eq(false, hub'abc')
++  T.eq(false, hub'[[a]b]')
++  T.eq(true, hub'['); T.eq(true, hub']')
++  T.eq(true, hub'[]]')
 +
 +  local hashes = M._codeHashes
-+  assertEq(nil, hashes'foo bar')
-+  assertEq(0,   hashes'foo]bar')
-+  assertEq(1,   hashes'[###foo]#bar')
++  T.eq(nil, hashes'foo bar')
++  T.eq(0,   hashes'foo]bar')
++  T.eq(1,   hashes'[###foo]#bar')
 +
-+  assertEq('[$some [code]]', M.code'some [code]')
-+  assertEq('[#some [code]#', M.code'some [code')
-+end)
++  T.eq('[$some [code]]', M.code'some [code]')
++  T.eq('[#some [code]#', M.code'some [code')
++end
 +
-+test('simple', function()
++T.simple = function()
 +  M.assertParse('hi there', {'hi there'})
 +  M.assertParse('hi there [*bob]', {
 +    'hi there ', {'bob', b=true},
@@ -1986,9 +2022,9 @@ initial commit
 +  })
 +
 +  M.assertParse('empty [{}block works].', {'empty ', {'block works'}, '.'})
-+end)
++end
 +
-+test('block', function()
++T.block = function()
 +  M.assertParse([[
 +Some code:
 +[##
@@ -2001,9 +2037,9 @@ initial commit
 +    '\n',
 +  })
 +
-+end)
++end
 +
-+test('attrs', function()
++T.attrs = function()
 +  pegl.assertParse{dat='i', spec=M.attr, expect={
 +      'i', pegl.EMPTY, kind='keyval',
 +    },
@@ -2022,9 +2058,9 @@ initial commit
 +    {'the/right', path='the/right'},
 +    ' path',
 +  })
-+end)
++end
 +
-+test('quote', function()
++T.quote = function()
 +  M.assertParse([[
 +A quote:
 +["We work with being,
@@ -2042,9 +2078,9 @@ initial commit
 +    },
 +    '\n',
 +  }, true)
-+end)
++end
 +
-+test('list', function()
++T.list = function()
 +  M.assertParse([[
 +A list:[+
 +* first item
@@ -2070,9 +2106,9 @@ initial commit
 +  },
 +  true)
 +
-+end)
++end
 +
-+test('nested', function()
++T.nested = function()
 +  M.assertParse([[
 +[+
 +* list item
@@ -2094,10 +2130,10 @@ initial commit
 +    }, "\n"
 +  }, true)
 +
-+end)
++end
 +
 +
-+test('table', function()
++T.table = function()
 +  local doc = [[
 +[{table}
 +# [*h]1     | h2   | h3
@@ -2134,9 +2170,9 @@ initial commit
 +]
 +]]
 +  M.assertParse(docIndent, noIndent)
-+end)
++end
 +
-+test('named', function()
++T.named = function()
 +  M.assertParse([[
 +[{n=n1 href=hi.com}N1]
 +[@n1]
@@ -2159,9 +2195,9 @@ initial commit
 +    {'links', href='hi.com'},
 +    '\n',
 +  })
-+end)
++end
 +
-+test('html', function()
++T.html = function()
 +  html.assertHtml('hi [*there] bob', {'hi <b>there</b> bob'})
 +  html.assertHtml('hi [*there]\n  newline', {
 +    'hi <b>there</b>', 'newline'
@@ -2221,15 +2257,15 @@ initial commit
 +  "code 2</code>",
 +  "next line."
 +})
-+end)
++end
 +
-+test('term', function()
++T.term = function()
 +  local W = Writer; local w = W{}
 +  local sty = term{
 +    '[$code] not code',
 +    out=fmt.Fmt{to=w}
 +  }
-+  assertEq(W{'code not code', ''}, w)
++  T.eq(W{'code not code', ''}, w)
 +
 +  ds.clear(w)
 +  local _, node, p = term.convert([[
@@ -2263,7 +2299,7 @@ initial commit
 +  * item 2 with code\
 +the end\
 +"
-+  assertEq(expect, table.concat(w, '\n'))
++  T.eq(expect, table.concat(w, '\n'))
 +
 +  ds.clear(w)
 +local _, node, p = term.convert(
@@ -2281,14 +2317,14 @@ initial commit
 +  + Methods, Etc\
 +  + Example      Ty<Example>\9lib/doc/test.lua:11\
 +  + __name       string\9 "
-+  assertEq(expect, table.concat(w, '\n'))
-+end)
++  T.eq(expect, table.concat(w, '\n'))
++end
 +
 +
-+test('doc', function()
++T.doc = function()
 +  -- local d = require'doc'.docstr(Mt.A)
 +  -- M.parse(d)
-+end)
++end
 
 --- /dev/null
 +++ cmd/doc/PKG.lua
@@ -2333,7 +2369,7 @@ initial commit
 
 --- /dev/null
 +++ cmd/doc/doc.lua
-@@ -0,0 +1,486 @@
+@@ -0,0 +1,484 @@
 +--- Get documentation for lua types and syntax.
 +--- Examples: [{## lang=lua}
 +--- doc{string.find}
@@ -2358,7 +2394,6 @@ initial commit
 +local pth = require'ds.path'
 +local Iter = require'ds.Iter'
 +local lines = require'lines'
-+local style = require'asciicolor.style'
 +local cxt = require'cxt'
 +
 +local escape = cxt.escape
@@ -2366,7 +2401,7 @@ initial commit
 +local push, concat = table.insert, table.concat
 +local update = table.update
 +
-+local sfmt, pushfmt = string.format, ds.pushfmt
++local sfmt = string.format
 +
 +local INTERNAL = '(internal)'
 +local COMMAND_NAME = 'when executed directly'
@@ -2663,10 +2698,10 @@ initial commit
 +  path, default = path or '', default or ''
 +  if path:sub(1,1) == '\n' or (di.doc and di.doc ~= '') then
 +    f:level(1)
-+    pushfmt(f, '%-16s | %s %s%s\n%s', name, ty, default, path, di.doc)
++    f:write(sfmt('%-16s | %s %s%s\n%s', name, ty, default, path, di.doc))
 +    f:level(-1)
 +  else
-+    pushfmt(f, '%-16s | %s %s%s', name, ty, default, path)
++    f:write(sfmt('%-16s | %s %s%s', name, ty, default, path))
 +  end
 +end
 +
@@ -2678,18 +2713,18 @@ initial commit
 +    else push(dis, k) end -- DocItem and values
 +  end
 +  if #dis > 0 then
-+    pushfmt(f, '\n[*%s: ] [{table}', name)
++    f:write(sfmt('\n[*%s: ] [{table}', name))
 +    for i, k in ipairs(dis) do
 +      local v = attr[k]
-+      push(f, '\n+ ')
++      f:write'\n+ '
 +      if mty.ty(v) == M.DocItem then M.fmtDocItem(f, v)
-+      else pushfmt(f, '[*%s] | %s', k, cxt.code(fmt(v))) end
++      else f:write(sfmt('[*%s] | %s', k, cxt.code(fmt(v)))) end
 +    end
-+    push(f, '\n]')
++    f:write'\n]'
 +  end
 +  if #docs > 0 then
 +    for i, k in ipairs(docs) do
-+      push(f, '\n'); M.fmtDoc(f, attr[k])
++      f:write'\n'; M.fmtDoc(f, attr[k])
 +    end
 +  end
 +end
@@ -2701,12 +2736,12 @@ initial commit
 +end
 +
 +M.fmtMeta = function(f, m)
-+  pushfmt(f, '[{table}')
-+  if m.summary then pushfmt(f, '\n+ [*summary] | %s', m.summary) end
-+  pushfmt(f, '\n+ [*version] | [$%s]', m.version or '(no version)')
-+  if m.homepage then pushfmt(f, '\n+ [*homepage] | [<%s>]', m.homepage) end
-+  if m.repo     then pushfmt(f, '\n+ [*repo] | [<%s>]', m.repo) end
-+  pushfmt(f, '\n]')
++  f:write'[{table}'
++  if m.summary then f:write(sfmt('\n+ [*summary] | %s', m.summary)) end
++  f:write(sfmt('\n+ [*version] | [$%s]', m.version or '(no version)'))
++  if m.homepage then f:write(sfmt('\n+ [*homepage] | [<%s>]', m.homepage)) end
++  if m.repo     then f:write(sfmt('\n+ [*repo] | [<%s>]', m.repo)) end
++  f:write'\n]'
 +end
 +
 +M.fmtDoc = function(f, d)
@@ -2714,29 +2749,27 @@ initial commit
 +  local name = d.pkgname or d.name
 +  local hname = name and sfmt('[:%s]', name) or '(unnamed)'
 +  if d.fnsig then hname = hname..cxt.code(d.fnsig) end
-+  pushfmt(f, '[{h%s}%s%s%s]',
++  f:write(sfmt('[{h%s}%s%s%s]',
 +          M.docHeader(d.docTy, d.lvl),
 +          d.docTy == 'Package' and '' or (assert(d.docTy)..' '),
 +          (d.docTy == 'Command') and COMMAND_NAME or hname,
-+          path)
++          path))
 +  if d.meta then M.fmtMeta(f, d.meta) end
 +  if d.comments then
-+    for i, l in ipairs(d.comments) do
-+      push(f, '\n'); push(f, l)
-+    end
++    for i, l in ipairs(d.comments) do f:write('\n', l) end
 +  end
 +  if d.main then
 +    M.fmtDoc(f, d.main)
 +  end
 +  if d.docTy == 'Table' or d.docTy == 'Value' then
 +    if d.code and #d.code > 1 then
-+      push(f, cxt.codeblock('\n'..concat(d.code, '\n')..'\n', 'lua'))
++      f:write(cxt.codeblock('\n'..concat(d.code, '\n')..'\n', 'lua'))
 +    end
 +    return
 +  end
 +
 +  local any = d.fields or d.values or d.tys or d.fns
-+  if any or d.mods then push(f, '\n') end
++  if any or d.mods then f:write'\n' end
 +  if d.fields then
 +    M.fmtAttr(f, d.docTy == 'Command' and 'Named Args' or 'Fields', d.fields)
 +  end
@@ -2747,9 +2780,9 @@ initial commit
 +    M.fmtAttr(f, name, d.fns)
 +  end
 +  if d.mods then
-+    if any then push(f, '\n') end
++    if any then f:write'\n' end
 +    for _, m in ipairs(d.mods) do
-+      push(f, '\n'); M.fmt(f, d.mods[m])
++      f:write'\n'; M.fmt(f, d.mods[m])
 +    end
 +  end
 +end
@@ -2794,6 +2827,7 @@ initial commit
 +M.main = function(args)
 +  args = M.Args(shim.parseStr(args))
 +  if args.help then return M.styleHelp(io.fmt, M.Args) end
++  require'doc.lua' -- ensure it is loaded
 +  local obj, expand = args[1], args.expand == true and 10 or args.expand
 +  assert(obj, 'arg[1] must be the item to find')
 +  local to = args.to and shim.file(args.to) or nil
@@ -2823,7 +2857,7 @@ initial commit
 
 --- /dev/null
 +++ cmd/doc/lua.lua
-@@ -0,0 +1,559 @@
+@@ -0,0 +1,565 @@
 +local G = G or _G
 +
 +local ERROR = [[
@@ -2948,10 +2982,11 @@ initial commit
 +
 +--- Find the pattern in the subj (subject) string, starting at the index.
 +--- returns the si (start index), ei (end index) and match groups
++--- (see [<#string.match>]).
 +---
 +--- [{## lang=lua}
-+--- assertEq({2, 4},       {find('%w+', ' bob is nice')})
-+--- assertEq({2, 7, 'is'}, {find(' bob is nice', '%w+ (%w+)')})
++--- T.eq({2, 4},       {find('%w+', ' bob is nice')})
++--- T.eq({2, 7, 'is'}, {find(' bob is nice', '%w+ (%w+)')})
 +--- ]##
 +---
 +--- Character classes for matching specific sets: [##
@@ -3040,16 +3075,16 @@ initial commit
 +---
 +--- Examples: [{## lang=lua}
 +---   sfmt = string.format
-+---   assertEq('age: 42',    sfmt('%s: %i',   'age', 42))
-+---   assertEq('age:    42', sfmt('%s: %5i',  'age', 42))
-+---   assertEq('age: 42,     sfmt('%s: %-5i', 'age', 42))
-+---   assertEq('age: 00042', sfmt('%s: %05i', 'age', 42)
++---   T.eq('age: 42',    sfmt('%s: %i',   'age', 42))
++---   T.eq('age:    42', sfmt('%s: %5i',  'age', 42))
++---   T.eq('age: 42,     sfmt('%s: %-5i', 'age', 42))
++---   T.eq('age: 00042', sfmt('%s: %05i', 'age', 42)
 +--- ]##
 +M['string.format'] = string.format--(fmt: str, ...) --> str
 +
 +--- Get ASCII (integer) codes for [$s[si:ei]]
 +---
-+--- Example: [$assertEq({98, 99}, {string.byte('abcd', 2, 3)})]
++--- Example: [$T.eq({98, 99}, {string.byte('abcd', 2, 3)})]
 +M['string.byte'] = string.byte--(str, si=1, ei=si) --> ...ints
 +
 +-- convert character codes to string and concatenate
@@ -3077,7 +3112,7 @@ initial commit
 +--- ]
 +---
 +--- Example: [{## lang=lua}
-+--- assertEq(string.pack('>i2i2', 0x1234, 0x5678) == '\x12\x34\x56\x78')]
++--- T.eq(string.pack('>i2i2', 0x1234, 0x5678) == '\x12\x34\x56\x78')]
 +--- ]##
 +M['string.pack'] = string.pack--(strtys, ...values) -> string
 +
@@ -3102,10 +3137,10 @@ initial commit
 +---
 +--- Examples: [{## lang=lua}
 +--- t = {'first', 'second', 'third', key='hi'}
-+--- assertEq('first', t[1])
-+--- assertEq('third', t[3])
-+--- assertEq('hi',    t.key)
-+--- assertEq(#t, 3) -- the length of the "list" part
++--- T.eq('first', t[1])
++--- T.eq('third', t[3])
++--- T.eq('hi',    t.key)
++--- T.eq(#t, 3) -- the length of the "list" part
 +--- ]##
 +---
 +--- [" WARNING: A table's length is defined as ANY index who's next value
@@ -3123,8 +3158,8 @@ initial commit
 +---
 +--- Examples: [{## lang=lua}
 +--- concat = table.concat
-+--- assertEq(1..' = '..3, concat{1, ' = ', 3})
-+--- assertEq('1, 2, 3',   concat({1, 2, 3}, ', ')
++--- T.eq(1..' = '..3, concat{1, ' = ', 3})
++--- T.eq('1, 2, 3',   concat({1, 2, 3}, ', ')
 +--- ]##
 +M['table.concat'] = table.concat--(t, sep='') --> string
 +
@@ -3149,7 +3184,7 @@ initial commit
 +---   -- insert behavior
 +---   table.insert(t, 'b', 1) -- {'b', 'd', 'e'}
 +---   table.insert(t, 'c', 2) -- {'b', 'c', 'd', 'e'}
-+---   assertEq({'b', 'c', 'd', 'e'}, t)
++---   T.eq({'b', 'c', 'd', 'e'}, t)
 +--- ]##
 +M['table.insert'] = table.insert
 +
@@ -3364,13 +3399,18 @@ initial commit
 +
 +-- boolean [$true] value
 +M['true'] = M.keyword()
++PKG_LOOKUP['true'] = M['true']
++
 +-- boolean [$false] value
 +M['false'] = M.keyword()
++PKG_LOOKUP['false'] = M['false']
++
 +--- [$nil] value, the the absense of a value. Used for: [+
 +---   * a variable is not set or has been set to [$nil]
 +---   * a table key is not set or has been set to [$nil]
 +--- ]
 +M['nil'] = M.keyword()
++PKG_LOOKUP['nil'] = M['nil']
 +
 +-- store items in this module in PKG_* variables
 +for k, obj in pairs(M) do
@@ -3386,7 +3426,7 @@ initial commit
 
 --- /dev/null
 +++ cmd/doc/test.lua
-@@ -0,0 +1,141 @@
+@@ -0,0 +1,143 @@
 +local M = mod'doc_test'
 +
 +--- document a fn
@@ -3409,14 +3449,14 @@ initial commit
 +local T = require'civtest'
 +local doc = require'doc'
 +
-+T.assertEq(mod.__newindex, getmetatable(M.Example).__newindex)
-+T.assertEq('doc_test.Example',    PKG_NAMES[M.Example])
-+T.assertEq('cmd/doc/test.lua:11', PKG_LOC[M.Example])
++T.eq(mod.__newindex, getmetatable(M.Example).__newindex)
++T.eq('doc_test.Example',    PKG_NAMES[M.Example])
++T.eq('cmd/doc/test.lua:11', PKG_LOC[M.Example])
 +
 +local rmPaths = function(str) return str:gsub('(/.-):%d+', '%1:000') end
-+T.assertEq('blah blah foo/bar.baz:000 blah blah',
++T.eq('blah blah foo/bar.baz:000 blah blah',
 +  rmPaths('blah blah foo/bar.baz:100 blah blah'))
-+T.assertEq('a b c/cmd/doc/test.lua:000 def',
++T.eq('a b c/cmd/doc/test.lua:000 def',
 +  rmPaths('a b c/cmd/doc/test.lua:11 def'))
 +
 +local doFmt = function(fn, obj)
@@ -3427,7 +3467,7 @@ initial commit
 +
 +
 +-- This was used to craft the for documentation
-+T.test('pairs', function()
++T.pairs = function()
 +  local function rawipairs(t, i)
 +    i = i + 1
 +    if i > #t then return nil end
@@ -3448,46 +3488,46 @@ initial commit
 +  assert(#r == 3)
 +  assert(r[1] == 1); assert(r[2] == 2); assert(r[3] == 10);
 +  assert(r.a == 8);  assert(r.hello == 'hi')
-+end)
++end
 +
-+T.test('findcode', function()
++T.findcode = function()
 +  local com, code = doc.findcode(M.exampleFn)
-+  T.assertEq({"--- document a fn", "--- another line"}, com)
-+  T.assertEq({"M.exampleFn = function() return end"}, code)
++  T.eq({"--- document a fn", "--- another line"}, com)
++  T.eq({"M.exampleFn = function() return end"}, code)
 +
 +  com, code = doc.findcode(M.Example)
-+  T.assertEq('--- document a metaty', com[1])
-+  T.assertEq('--- another line',      com[2])
-+  T.assertEq([[M.Example  = require'metaty''Example'{]], code[1])
-+  T.assertEq([[  'a [int]', a=4,]], code[2])
-+  T.assertEq('}', code[3])
-+end)
++  T.eq('--- document a metaty', com[1])
++  T.eq('--- another line',      com[2])
++  T.eq([[M.Example  = require'metaty''Example'{]], code[1])
++  T.eq([[  'a [int]', a=4,]], code[2])
++  T.eq('}', code[3])
++end
 +
 +
-+T.test('doc fn', function()
++T.doc_fn = function()
 +  local res = doc.construct(M.exampleFn, nil, 0)
-+  T.assertEq(
++  T.eq(
 +    "[$doc_test.exampleFn] | \\[[$() -> nil]\\] ([{path=cmd/doc/test.lua:000}src])",
 +    doFmt(doc.fmtDocItem, res))
 +
 +  local res = doc.construct(M.exampleFn, nil, 1)
-+  T.assertEq('Function', res.docTy)
-+  T.assertEq(
++  T.eq('Function', res.docTy)
++  T.eq(
 +"[{h3}Function [:doc_test.exampleFn][$() -> nil] ([{i path=cmd/doc/test.lua:000}src])]\
 +document a fn\
 +another line",
 +    doFmt(doc.fmtDoc, res))
-+end)
++end
 +
 +
-+T.test('doc ty', function()
++T.doc_ty = function()
 +  local res = doc.construct(M.Example, nil, 0)
-+  T.assertEq(
++  T.eq(
 +    "[$doc_test.Example] | \\[Ty<Example>\\] ([{path=cmd/doc/test.lua:000}src])",
 +    doFmt(doc.fmtDocItem, res))
 +
 +  local res = doc.construct(M.Example, nil, 1)
-+  T.assertEq(
++  T.eq(
 +"[{h3}Record [:doc_test.Example] ([{i path=cmd/doc/test.lua:000}src])]\
 +document a metaty\
 +another line\
@@ -3505,18 +3545,20 @@ initial commit
 ++ [$doc_test.Example.__index] | \\[Ty<Example>\\] ([{path=cmd/doc/test.lua:000}src])\
 +]\
 +[*Methods: ] [{table}\
+++ [$doc_test.Example.__fmt] | \\[function\\] ([{path=lib/metaty/metaty.lua:000}src])\
 ++ [$doc_test.Example.__newindex] | \\[function\\] ([{path=lib/metaty/metaty.lua:000}src])\
+++ [$doc_test.Example.__tostring] | \\[function\\] ([{path=lib/metaty/metaty.lua:000}src])\
 ++ [$doc_test.Example.method] | \\[function\\] ([{path=cmd/doc/test.lua:000}src])\
 +]",
 +    doFmt(doc.fmtDoc, res))
-+end)
++end
 +
-+T.test('doc module', function()
++T.doc_module = function()
 +  local dir = 'cmd/doc/test/'
 +  local fm = dofile(dir..'docfake.lua')
 +
 +  local comments, code = doc.findcode(fm)
-+  T.assertEq({
++  T.eq({
 +    "--- fake lua module for testing doc.",
 +    "---",
 +    "--- module documentation.",
@@ -3526,12 +3568,12 @@ initial commit
 +  res = res..'\n'
 +  pth.write(dir..'docfake.cxt', res) -- uncomment to update, then check diff!
 +  local cxt = pth.read(dir..'docfake.cxt')
-+  T.assertEq(cxt, res)
-+end)
++  T.eq(cxt, res)
++end
 
 --- /dev/null
 +++ cmd/doc/test/docfake.cxt
-@@ -0,0 +1,29 @@
+@@ -0,0 +1,33 @@
 +[{h2}Module [:docfake] ([{i path=cmd/doc/test/docfake.lua:000}src])]
 +fake lua module for testing doc.
 +
@@ -3555,7 +3597,11 @@ initial commit
 +[*Records: ] [{table}
 ++ [$docfake.A.__index] | \[Ty<A>\] ([{path=cmd/doc/test/docfake.lua:000}src])
 +]
++[{h4}Function [:metaty.fmt] ([{i path=lib/metaty/metaty.lua:000}src])]
++The default __fmt method.
 +[{h4}Function [:metaty.newindex] ([{i path=lib/metaty/metaty.lua:000}src])]
++[{h4}Function [:metaty.tostring] ([{i path=lib/metaty/metaty.lua:000}src])]
++The default __tostring method.
 +[{h4}Function [:A.meth1][$() -> thing] ([{i path=cmd/doc/test/docfake.lua:000}src])]
 +docs for meth1
 +[{h3}Function [:docfake.fun1][$() -> thing] ([{i path=cmd/doc/test/docfake.lua:000}src])]
@@ -4939,14 +4985,14 @@ initial commit
 +..'  3 5\n'
 +..'1 3 5 7 9\n'
 +
-+T.test('move', function()
++T.move = function()
 +  local d = newEd(lines3); local e = d.edit
 +  local function assertMove(mv, ev, l, c)
 +    ev.move = mv; M.move(d, ev)
-+    T.assertEq({l, c}, {e.l, e.c})
++    T.eq({l, c}, {e.l, e.c})
 +  end
 +
-+  T.assertEq({1, 1}, {e.l, e.c})
++  T.eq({1, 1}, {e.l, e.c})
 +
 +  -- move some cols
 +  assertMove(nil, {cols=1}, 1, 2)
@@ -4967,42 +5013,42 @@ initial commit
 +  assertMove('find',     {find='3'},     1, 3)
 +  assertMove('find',     {find='9'},     1, 9)
 +  assertMove('findback', {findback='1'}, 1, 1)
-+end)
++end
 +
-+T.test('remove', function()
++T.remove = function()
 +  local d = newEd(lines3); local e, b = d.edit, d.edit.buf
 +  local function assertRemove(mv, ev, l, c)
 +    ev.move = mv; M.remove(d, ev)
-+    T.assertEq({l, c}, {e.l, e.c})
++    T.eq({l, c}, {e.l, e.c})
 +  end
 +
-+  T.assertEq({1, 1}, {e.l, e.c})
++  T.eq({1, 1}, {e.l, e.c})
 +  assertRemove('forword', {}, 1, 1) -- remove word (end at 1.1)
-+    T.assertEq('3 5 7 9', b[1])
-+    T.assertEq('  3 5', b[2])
++    T.eq('3 5 7 9', b[1])
++    T.eq('  3 5', b[2])
 +  assertRemove('find', {find='7', cols=-1}, 1, 1) -- remove before 7
-+    T.assertEq('7 9', b[1])
++    T.eq('7 9', b[1])
 +  assertRemove('lines', {lines=0, times=2}, 1, 1) -- remove two lines
-+    T.assertEq('1 3 5 7 9\n', fmt(b.dat))
++    T.eq('1 3 5 7 9\n', fmt(b.dat))
 +  e.c = 4; assertRemove(nil, {off=-1, cols1=-1}, 1, 3) -- backspace delete '3'
-+    T.assertEq('1  5 7 9\n', fmt(b.dat))
++    T.eq('1  5 7 9\n', fmt(b.dat))
 +  e.c = 4; assertRemove(nil, {off=-1}, 1, 3) -- backspace delete ' 5'
-+    T.assertEq('1  7 9\n', fmt(b.dat))
-+end)
++    T.eq('1  7 9\n', fmt(b.dat))
++end
 +
-+T.test('insert', function()
++T.insert = function()
 +  local d = newEd'1 2 3\n4 5 6'; local e, b = d.edit, d.edit.buf
 +  local function assertInsert(txt, ev, l, c)
 +    ev[1] = txt; M.insert(d, ev)
-+    T.assertEq({l, c}, {e.l, e.c})
++    T.eq({l, c}, {e.l, e.c})
 +  end
-+  T.assertEq({1, 1}, {e.l, e.c})
++  T.eq({1, 1}, {e.l, e.c})
 +  assertInsert('4 5 ', {}, 1, 5)
-+    T.assertEq('4 5 1 2 3', b[1])
-+    T.assertEq('4 5 6',     b[2])
++    T.eq('4 5 1 2 3', b[1])
++    T.eq('4 5 6',     b[2])
 +  assertInsert('6 7\n', {}, 2, 1)
-+    T.assertEq('4 5 6 7\n1 2 3\n4 5 6', fmt(b.dat))
-+end)
++    T.eq('4 5 6 7\n1 2 3\n4 5 6', fmt(b.dat))
++end
 
 --- /dev/null
 +++ cmd/ele/tests/test_bindings.lua
@@ -5027,12 +5073,12 @@ initial commit
 +  local e = {}; return e, function(v) push(e, v) end
 +end
 +
-+T.test('chords', function()
-+  T.assertEq({'space', 'a', 'b'}, M.chord'space a b')
++T.chords = function()
++  T.eq({'space', 'a', 'b'}, M.chord'space a b')
 +
-+  T.assertEq('a b', M.chordstr{'a', 'space', 'b'})
-+  T.assertEq('x',   M.chordstr{'x'})
-+end)
++  T.eq('a b', M.chordstr{'a', 'space', 'b'})
++  T.eq('x',   M.chordstr{'x'})
++end
 +
 +local function newEd(mode)
 +  local ed = Ed{
@@ -5042,11 +5088,11 @@ initial commit
 +  return ed
 +end
 +
-+T.test('bindings', function()
++T.bindings = function()
 +  local data = newEd'insert'
 +  et.checkBindings(M.insert)
 +  et.checkBindings(M.command)
-+end)
++end
 +
 +local function assertKeys(keyinputs, mode, expectKeys, expectEvents)
 +  local data = newEd(mode)
@@ -5055,34 +5101,34 @@ initial commit
 +    keyinput(data, {action='keyinput', ki}, evsend)
 +  end
 +
-+  if expectKeys == false then T.assertEq(nil, data.ext.keys.keep)
-+  elseif expectKeys then T.assertEq(expectKeys, data.ext.keys) end
-+  T.assertEq(expectEvents or {}, events:drain())
++  if expectKeys == false then T.eq(nil, data.ext.keys.keep)
++  elseif expectKeys then T.eq(expectKeys, data.ext.keys) end
++  T.eq(expectEvents or {}, events:drain())
 +  return data
 +end
 +
-+T.test('action', function()
++T.action = function()
 +  local d
 +  local mode = function(mode) return {mode=mode} end
 +  -- Switch between modes
 +  d = assertKeys('esc',   'insert', false, {mode'command'})
-+    T.assertEq('command', d.mode)
-+    T.assertEq({'esc'},   d.ext.keys.chord)
++    T.eq('command', d.mode)
++    T.eq({'esc'},   d.ext.keys.chord)
 +  d = assertKeys('i',     'command', false, {mode'insert'})
-+    T.assertEq('insert', d.mode)
-+    T.assertEq({'i'},    d.ext.keys.chord)
++    T.eq('insert', d.mode)
++    T.eq({'i'},    d.ext.keys.chord)
 +  d = assertKeys('esc i', 'insert', false,
 +    {mode'insert', mode'command'}) -- note: reverse order because pushLeft
-+    T.assertEq('insert',  d.mode)
-+    T.assertEq({'i'},     d.ext.keys.chord)
++    T.eq('insert',  d.mode)
++    T.eq({'i'},     d.ext.keys.chord)
 +
 +  -- Insert mode
 +  local ins = function(str) return {action='insert', str} end
 +  d = assertKeys('a', 'insert', false, {ins'a'})
-+    T.assertEq({'a'}, d.ext.keys.chord)
++    T.eq({'a'}, d.ext.keys.chord)
 +  d = assertKeys('space a', 'insert', false,
 +    {ins'a', ins' '}) -- note: reverse order because pushLeft
-+    T.assertEq({'a'}, d.ext.keys.chord)
++    T.eq({'a'}, d.ext.keys.chord)
 +
 +  -- move
 +  local move = function(t) t.action = 'move'; return t end
@@ -5098,9 +5144,9 @@ initial commit
 +
 +  local ch = function(t) t.mode = 'insert'; return rm(t) end
 +  d = assertKeys('3 c l', 'command', false, {ch{off=1, times=3}})
-+    T.assertEq('insert', d.mode)
++    T.eq('insert', d.mode)
 +  d = assertKeys('c c',   'command', false, {ch{lines=0}})
-+    T.assertEq('insert', d.mode)
++    T.eq('insert', d.mode)
 +
 +  -- find
 +  assertKeys('f x',       'command', false,
@@ -5112,14 +5158,15 @@ initial commit
 +
 +  -- Event
 +  assertKeys('I', 'command', false, {move{move='sot', mode='insert'}})
-+end)
++end
 
 --- /dev/null
 +++ cmd/ele/tests/test_session.lua
-@@ -0,0 +1,134 @@
+@@ -0,0 +1,138 @@
 +-- Test display functionality (not mutation)
 +
 +local T = require'civtest'
++local CT = require'civtest'
 +local mty = require'metaty'
 +local fmt = require'fmt'
 +local ds, lines = require'ds', require'lines'
@@ -5131,8 +5178,7 @@ initial commit
 +local Buffer = require'lines.buffer'.Buffer
 +local Fake = require'vt100.testing'.Fake
 +local path = require'ds.path'
-+
-+local aeq = T.assertEq
++local ixt = require'civix.testing'
 +
 +local _CWD = CWD
 +CWD = path.abs(ds.srcdir()) -- override global
@@ -5156,105 +5202,109 @@ initial commit
 +  's [Session]',
 +}
 +getmetatable(Test).__call = function(Ty, t)
++  local path = ds.srcloc(1)
 +  t = mty.construct(Ty, t)
 +  t.s = t.s or Session:test(); local ed = t.s.ed
 +  ed.display = Fake{h=t.th, w=t.tw}
-+  T.asyncTest(assert(t[1], 'need name'), function()
++  local name = assert(t[1], 'need name')
++  print('## test_session.Test', name)
++  local testFn = function()
 +    if t.dat then
 +      lines.inset(ed.edit.buf.dat, t.dat, 1)
 +    elseif t.open then ed:open(t.open) end
 +    t.s:handleEvents()
 +    assert(t[2], 'need [2]=fn')(t)
-+    aeq(log.LogTable{}, ed.error)
++    T.eq(log.LogTable{}, ed.error)
 +    ed.run = false
-+  end)
++  end
++  ixt.runAsyncTest(function() T.runTest(name, testFn, path) end)
 +end
 +
 +Test{'session', dat='', function(tst)
 +  local s, ed, e = tst.s, tst.s.ed, tst.s.ed.edit
 +  local b, t = ed.edit.buf, ed.display
-+  aeq('command', ed.mode)
-+  aeq('\n\n', fmt(t))
++  T.eq('command', ed.mode)
++  T.eq('\n\n', fmt(t))
 +
 +  s:play'Z' -- unknown
-+    aeq(1, #ed.error)
-+    T.assertMatch('unbound chord: Z', fmt(ed.error[1]))
++    T.eq(1, #ed.error)
++    T.matches('unbound chord: Z', fmt(ed.error[1]))
 +  ds.clear(ed.error)
 +
 +  s:play'i'
-+    aeq('insert', ed.mode) -- next mode
-+    aeq(nil, ed.ext.keys.next) -- selected in keyinput
-+  aeq(log.LogTable{}, ed.error)
++    T.eq('insert', ed.mode) -- next mode
++    T.eq(nil, ed.ext.keys.next) -- selected in keyinput
++  T.eq(log.LogTable{}, ed.error)
 +
 +  s:play'9 space 8'; ed:draw()
-+    aeq('9 8', b.dat[1])
-+    aeq('9 8\n\n', fmt(t))
-+  aeq(log.LogTable{}, ed.error)
++    T.eq('9 8', b.dat[1])
++    T.eq('9 8\n\n', fmt(t))
++  T.eq(log.LogTable{}, ed.error)
 +
 +  s:play'space 7 return 6'
-+    aeq('9 8 7\n6\n', fmt(t))
++    T.eq('9 8 7\n6\n', fmt(t))
 +end}
 +
 +Test{'move', dat=LINES3, function(tst)
 +  local s, ed, e = tst.s, tst.s.ed, tst.s.ed.edit
-+  aeq(3, #e.buf)
-+  aeq('command', ed.mode)
-+  aeq('\n\n', fmt(ed.display))
++  T.eq(3, #e.buf)
++  T.eq('command', ed.mode)
++  T.eq('\n\n', fmt(ed.display))
 +
 +  s:play'' -- draw
-+    aeq('1 3 5 7 9\n 2 4 6\n', fmt(ed.display))
++    T.eq('1 3 5 7 9\n 2 4 6\n', fmt(ed.display))
 +
-+  s:play'j';   aeq({2, 1}, {e.l, e.c})
-+    aeq(LINES3, fmt(ed.display))
-+  s:play'2 k'; aeq({1, 1}, {e.l, e.c})
-+  s:play'$';   aeq({1, 9}, {e.l, e.c})
-+  s:play'j';   aeq({2, 7}, {e.l, e.c})
-+    aeq(LINES3, fmt(ed.display))
++  s:play'j';   T.eq({2, 1}, {e.l, e.c})
++    T.eq(LINES3, fmt(ed.display))
++  s:play'2 k'; T.eq({1, 1}, {e.l, e.c})
++  s:play'$';   T.eq({1, 9}, {e.l, e.c})
++  s:play'j';   T.eq({2, 7}, {e.l, e.c})
++    T.eq(LINES3, fmt(ed.display))
 +
-+  s:play'0';   aeq({2, 1}, {e.l, e.c})
-+  s:play'2 w'; aeq({2, 4}, {e.l, e.c})
-+  s:play'b';   aeq({2, 2}, {e.l, e.c})
-+  s:play'l ^'; aeq({2, 2}, {e.l, e.c})
++  s:play'0';   T.eq({2, 1}, {e.l, e.c})
++  s:play'2 w'; T.eq({2, 4}, {e.l, e.c})
++  s:play'b';   T.eq({2, 2}, {e.l, e.c})
++  s:play'l ^'; T.eq({2, 2}, {e.l, e.c})
 +end}
 +
 +Test{'backspace', dat=LINES3, function(tst)
 +  local s, ed, e = tst.s, tst.s.ed, tst.s.ed.edit
 +  local b = e.buf
-+  s:play'l l';    aeq({1, 3}, {e.l, e.c})
-+  s:play'i back'; aeq({1, 2}, {e.l, e.c})
-+    aeq('13 5 7 9', b[1])
-+  aeq('13 5 7 9\n 2 4 6\n', fmt(ed.display))
++  s:play'l l';    T.eq({1, 3}, {e.l, e.c})
++  s:play'i back'; T.eq({1, 2}, {e.l, e.c})
++    T.eq('13 5 7 9', b[1])
++  T.eq('13 5 7 9\n 2 4 6\n', fmt(ed.display))
 +end}
 +
 +Test{'open', open=SMALL, th=9, tw=30, function(tst)
 +  local s, ed, e = tst.s, tst.s.ed, tst.s.ed.edit
 +  local b, BID = e.buf, 2
-+  aeq(b.id, BID)
-+  aeq(0, #ed.buffers[1].tmp) -- was temporary and was closed
-+  aeq(SMALL, b.dat.path)
++  T.eq(b.id, BID)
++  T.eq(0, #ed.buffers[1].tmp) -- was temporary and was closed
++  T.eq(SMALL, b.dat.path)
 +  s:play'' -- draws
-+    aeq('-- a small lua file for tests', b[1])
-+    aeq(pth.read(SMALL), fmt(ed.display))
++    T.eq('-- a small lua file for tests', b[1])
++    T.eq(pth.read(SMALL), fmt(ed.display))
 +  s:play'd f space'
-+    aeq('a small lua file for tests', b[1])
++    T.eq('a small lua file for tests', b[1])
 +  e = ed:open(SMALL)
-+    aeq(b.id, BID)
++    T.eq(b.id, BID)
 +    assert(rawequal(b, e.buf), 'buf is new')
-+    aeq('a small lua file for tests', b[1]) -- no change to contents
++    T.eq('a small lua file for tests', b[1]) -- no change to contents
 +end}
 +
-+Test{'nav', dat='', function(tst)
-+  -- local s, ed, e = tst.s, tst.s.ed, tst.s.ed.edit
-+  -- local b, BID = e.buf, 2
-+  -- s:play'space f space' -- listCWD
-+  --   aeq(BID, b.id) -- opened new buffer
-+end}
++-- Test{'nav', dat='', function(tst)
++--   local s, ed, e = tst.s, tst.s.ed, tst.s.ed.edit
++--   local b, BID = e.buf, 2
++--   s:play'space f space' -- listCWD
++--     T.eq(BID, b.id) -- opened new buffer
++-- end}
 +
 +CWD = _CWD
 
 --- /dev/null
 +++ cmd/ele/tests/test_term.lua
-@@ -0,0 +1,42 @@
+@@ -0,0 +1,43 @@
 +-- Test display functionality (not mutation)
 +
 +local T = require'civtest'
@@ -5279,24 +5329,25 @@ initial commit
 +.."  line1\n"
 +.."    lin"
 +
-+T.test('edit', function()
++T.edit = function()
 +  local e = edit.Edit(nil, Buffer.new(lines3))
-+  T.assertEq(3, #e.buf.dat)
-+  T.assertEq(3, #e.buf)
-+  T.assertEq(3, #e)
++  T.eq(3, #e.buf.dat)
++  T.eq(3, #e.buf)
++  T.eq(3, #e)
 +  local ft = Fake{h=3, w=10}
 +  e.tl, e.tc, e.th, e.tw = 1, 1, 3, 10
 +  e:draw(ft, true)
-+  T.assertEq(lines3, fmt(ft))
++  T.eq(lines3, fmt(ft))
 +
 +  e.th, e.tw = 2, 5
 +  ft:clear(); e:draw(ft, true)
-+  T.assertEq(L_2h5w, fmt(ft))
++  T.eq(L_2h5w, fmt(ft))
 +
 +  e.tl, e.tc = 2, 3
 +  ft:clear(); e:draw(ft, true)
-+  T.assertEq(L_2l3c2h5w, fmt(ft))
-+end)
++  T.eq(L_2l3c2h5w, fmt(ft))
++end
++
 
 --- /dev/null
 +++ cmd/ff/PKG.lua
@@ -5320,7 +5371,7 @@ initial commit
 
 --- /dev/null
 +++ cmd/ff/ff.lua
-@@ -0,0 +1,217 @@
+@@ -0,0 +1,233 @@
 +local G = G or _G
 +
 +--- re-imagining of ff using new tech and better args
@@ -5334,7 +5385,7 @@ initial commit
 +local pth  = require'ds.path'
 +local Iter = require'ds.Iter'
 +local civix = require'civix'
-+local acs = require'asciicolor.style'
++local ac = require'asciicolor'
 +
 +local sfmt, gsub = string.format, string.gsub
 +local push = table.insert
@@ -5383,8 +5434,8 @@ initial commit
 +--- to [$io.fmt].
 +M.find = function(path, pats, sub) --> boolean
 +  local found, l, find, ms, me, pi, pat = false, 0, ds.find
-+  local f, sf = io.fmt, acs.Fmt{to=io.stdout}
-+  for line in io.lines(path) do
++  local f, sf = io.fmt, ac.Fmt{to=io.stdout}
++  for line in io.lines(path, 'L') do
 +    l, ms, me, pi, pat = l + 1, find(line, pats)
 +    if ms then
 +      if not found then
@@ -5406,6 +5457,8 @@ initial commit
 +  local find, ms, me, pi, pat = ds.find
 +  for line in io.lines(path, 'L') do
 +    ms, me, pi, pat = find(line, pats)
++    if ms then
++    end
 +    to:write(ms and gsub(line, pat, sub) or line)
 +  end
 +end
@@ -5417,7 +5470,7 @@ initial commit
 +  args = M.Main(args)
 +  if #args.root == 0 then args.root[1] = pth.cwd() end
 +  log.info('ff %q', args)
-+  local sf = acs.Fmt{to=io.stdout}
++  local sf = ac.Fmt{to=io.stdout}
 +
 +  local w = civix.Walk(args.root)
 +  local it, ffind, finds = Iter{w}, M.find, ds.find
@@ -5468,7 +5521,8 @@ initial commit
 +          '%s already exists', subPath
 +        ))end
 +        replace(p, to, pat, sub)
-+        to:flush(); to:close(); civix.mv(subPath, p)
++        to:flush(); to:close();
++        civix.mv(subPath, p)
 +      end
 +      return p, pty
 +    end)
@@ -5513,23 +5567,36 @@ initial commit
 +local linenum = function(l) return sfmt('% 6i ', l) end
 +local AFTER = '   --> '
 +
++
++local splitMatch = function(str, ms, me) --> beg, mat, end_
++  local beg, mat = str:sub(1,ms-1), str:sub(ms,me)
++  local end_     = str:sub(me+1)
++  local hasNL = str:sub(-1) == '\n'
++  if hasNL then
++    if end_ == '' then mat = mat:sub(1,-2)
++    else end_ = end_:sub(1,-2) end
++  else end_ = end_..'[EOL]' end
++  return beg, mat, end_
++end
++
 +M.fmtMatch = function(f, l, str, ms, me)
++  local beg, mat, end_ = splitMatch(str, ms, me)
 +  f:styled('line',  linenum(l))
-+  f:styled(nil,     str:sub(1, ms-1))
-+  f:styled('match', str:sub(ms, me))
-+  f:styled(nil,     str:sub(me+1), '\n')
++  f:styled(nil,     beg)
++  f:styled('match', mat)
++  f:styled(nil,     end_, '\n')
 +end
 +M.fmtSub = function(f, before, after)
 +  local si, ei = 1, -1
 +  while before:sub(si,si) == after:sub(si,si) do si = si + 1 end
 +  while before:sub(ei,ei) == after:sub(ei,ei) do ei = ei - 1 end
 +  ei = #after + ei + 1
-+  if ei ~= 0 then
-+    f:styled('meta', AFTER)
-+    f:styled('meta', after:sub(1, si-1))
-+    f:styled(nil,    after:sub(si, ei))
-+    f:styled('meta', after:sub(ei+1), '\n')
-+  end
++  if ei == 0 then return end
++  local beg, mat, end_ = splitMatch(after, si, ei)
++  f:styled('meta', AFTER)
++  f:styled('meta', beg)
++  f:styled(nil,    mat)
++  f:styled('meta', end_, '\n')
 +end
 +fmtMatch, fmtSub = M.fmtMatch, M.fmtSub
 +
@@ -5541,7 +5608,7 @@ initial commit
 
 --- /dev/null
 +++ cmd/ff/test.lua
-@@ -0,0 +1,136 @@
+@@ -0,0 +1,135 @@
 +-- test for ff
 +-- Many of these involve writing some text files and dirs to .out/ff/
 +-- and then using it to
@@ -5552,8 +5619,7 @@ initial commit
 +local fmt = require'fmt'
 +local ds, lines = require'ds', require'lines'
 +local civix  = require'civix'
-+local T = require'civtest'.Test
-+local test, assertEq; ds.auto'civtest'
++local T = require'civtest'
 +local ff = require'ff'
 +
 +local push, sfmt = table.insert, string.format
@@ -5592,7 +5658,7 @@ initial commit
 +  return table.concat(t, '\n')..'\n'
 +end
 +
-+test('ff.Main', function()
++T.ff_Main = function()
 +  local m = ff.Main{'a', 'p:b/c', '-b', '-p:%.ef', 'r:r1/', '--', 'r2/'}
 +  T.eq(mty.construct(ff.Main, {
 +    root={'r2/', 'r1/'},
@@ -5608,7 +5674,7 @@ initial commit
 +    path={'dir/'}, nopath=NOPATH,
 +    sub = 'b',
 +  }), m)
-+end)
++end
 +
 +local function runFF(args) --> ok, paths, stdout, stderr
 +  local ll = LOGLEVEL; LOGLEVEL = 0
@@ -5636,7 +5702,7 @@ initial commit
 +  T.eq({}, res); T.eq('', stdout); T.eq('', stderr)
 +end
 +
-+test('ff_find', function()
++T.ff_find = function()
 +  testA()
 +
 +  local bArgs = {'-p:', 'b %d1', '--', dir}
@@ -5650,9 +5716,9 @@ initial commit
 +  local ok, res, stdout, stderr = runFF{'-p:', 'b %d1', 'p:/b/', 'r:'..dir}
 +  assert(ok, res);
 +  T.eq({dir..'b/b1.txt'}, res)
-+end)
++end
 +
-+test('ff_sub', function()
++T.ff_sub = function()
 +  local subArgs = {'-p:', 'a (%d1)', sub='s %1', '--', dir}
 +  local ok, res, stdout, stderr = runFF(ds.copy(subArgs))
 +  assert(ok, res)
@@ -5677,7 +5743,7 @@ initial commit
 +  assert(ok, res)
 +  T.eq({dir..'a.txt'}, res)
 +  T.eq(expectSimple'    %i1 s %i1', stderr)
-+end)
++end
 
 --- /dev/null
 +++ cmd/pkgrock/PKG.lua
@@ -5728,7 +5794,7 @@ initial commit
 +---   , rock lib/pkg --create --gitops='add commit tag' \
 +---     --gitpush='origin main --tags' --upload=$ROCKAPI
 +--- ]##
-+M.Args = mty'pkgrock' {
++M.Main = mty'pkgrock' {
 +  [[create [bool]   creates the rocks from PKG.lua files]],
 +  [[gitops [string] one or more: add,commit,tag]],
 +  [[gitpush[string] where to push, i.e: 'origin main']],
@@ -5798,7 +5864,7 @@ initial commit
 +end
 +
 +M.main = function(t)
-+  t = M.Args(shim.parseStr(t))
++  t = M.Main(shim.parseStr(t))
 +  require'civ'.setupFmt()
 +  local to = io.fmt
 +  local styled = function(...)
@@ -6006,24 +6072,27 @@ initial commit
 
 --- /dev/null
 +++ cmd/pvc/README.cxt
-@@ -0,0 +1,168 @@
+@@ -0,0 +1,290 @@
 +[$pvc <cmd>]: patch version control command line utility.
 +
 +["NOTICE: pvc now works but will have bugs and the API is subject to change.
 +  Use at your own risk and always back up work that you are using pvc
-+  to track (aka use git and pvc together).
++  to track (aka use [<#pvc-git>git and pvc together]).
 +]
 +
 +[{:h3 name=pvc-install}Installation]
 +
-+Simply follow civlua's [@Installation] and then run
++Simply follow civlua's [<#Installation>] and add the following to your [$.bashrc]
++[##
++alias pvc="civlua pvc"
++]##
 +
-+
-+pvc is a git or mercurial like (in usage) but extremely simple version control
-+system where branches are simply a series of unix patches, each containing a
-+series of [$diff -u] entries. The only fundamental disadvantage (or advantage)
-+of using pvc instead of git is that pvc supports only fast-forward merges,
-+which are the cleanest and simplest to understand.
++[{:h2 name=pvc-about}About]
++[*pvc] is a version control system similar to git or mercurial, but is ultra
++simple: branches are simply a [$base] followed by a set of unix patches with
++incrementing id. The only fundamental disadvantage (or advantage) of using pvc
++instead of git is that pvc supports only fast-forward merges, which are the
++cleanest and simplest to understand.
 +
 +Builtin cmds:[+
 +* [$init dir]: initialize the [$dir] (default=CWD) for PVC.
@@ -6036,7 +6105,7 @@ initial commit
 +
 +* [$commit]: add changes to the current branch as a patch and move [$at]
 +  forward. The commit message can be written to the COMMIT file or be
-+  specified after the [$--] argument.
++  specified after the [$--] argument (multiple are space-separated).
 +
 +* [$at [branch]]: if [$branch] is empty then return the active
 +  [$branch#id].
@@ -6098,15 +6167,17 @@ initial commit
 +  (inclusive) to a backup.
 +]
 +
-+[{h2}Usage]
-+First install [@Package_civ], then run pvc in bash with [$civ.lua pvc <cmd>].
++[{h2 name=pvc-init}Initiaize your pvc repo]
++["You may also want to see [<#pvc-git>] to use git for backups]
++
++First install [<#Package_civ>], then run pvc in bash with [$civ.lua pvc <cmd>].
 +
 +To track an existing directory:[+
 +* [$cd path/to/dir] to navigate to the directory
 +* [$pvc init] to initialize pvc
 +* [$pvc diff] prints the diff of local changes to stderr and untracked files
 +  (that are not matched in [$.pvcignore] to stdout. Edit [$.pvcignore]
-+  with appropriate entries (see [@pvcignore]) to ignore paths you don't
++  with appropriate entries (see [<#pvcignore>]) to ignore paths you don't
 +  want tracked until [$pvc diff] shows only files you want tracked.
 +
 +  When ready, running [$pvc diff >> .pvcpaths] in bash will track all untracked
@@ -6117,9 +6188,9 @@ initial commit
 +]
 +
 +[{:h3}pvcignore]
-+The [$.pvcignore] file should contain a line-separated list of lua patterns
-+([@lua.find]) that should be ignored. Items ending in [$/] will apply to
-+whole directories. A common pvc ignore file might look like:
++The [$.pvcignore] file should contain a line-separated list of [<#string.find>]
++patterns that should be ignored. Items ending in [$/] will apply to whole
++directories. A common pvc ignore file might look like:
 +
 +[##
 +# directories
@@ -6129,56 +6200,173 @@ initial commit
 +# extensions
 +%.so$
 +
-+# specific files
-+%./path/to/some_file
++# binary files
++%./path/to/some_binary
 +]##
 +
-+[{h2}Basic Architecture]
++[{h3 name=pvc-git}Use with git]
++pvc is still in early development, so there is no hosting service which
++ergonomically supports backing-up development. The following is how pvc
++(and civlua) itself is developed and seems to work well.
 +
-+The below architecture is given to allow a user to debug or fix problems that
-+occur while using pvc regardless of whether the cause is user, software or
-+operating system related.
++Basically, we are going to have two git repositories. I will use
++civlua as the example:[+
++* [<https://github.com/civboot/civlua>]: your "main" one that hosts your released
++  versions and documentation. This should NOT contain any [$.pvc/] files (but
++  should contain i.e.  [$.pvcpaths]).
 +
-+pvc uses only two files in the local directory: [$.pvcpaths] which track
-+which paths are included and [$COMMIT] which is the default commit message.
-+
-+All other pvc data is stored in a local [$.pvc/] directory. This contains
-+branch directories as well as the [$at] file containing the current working
-+[$branch#id].
-+
-+The branch directories (i.e. [$.pvc/main/], [$.pvc/dev/]) contain the
-+following structure: [+
-+* a [$branch] text file (if this is not the root) which contains the [$name#id] where
-+  this was branched from.
-+
-+* an [$uri] text file if this is a remote branch containing where to download
-+  updates.
-+
-+* a [$tip] file containing the tip id of the branch.
-+
-+* a [$patch/] directory with a directory structure nested by two digits
-+  containing files with extensions ending in either [$.p] (patch file) or
-+  [$.snap/] (snapshot directory).  For example [$patch/01/23/12345.p] is a
-+  patch file in a directory structure with [$patch/depth] of [$4].
-+
-+  ["The [$.snap/] directories contain the complete project at that id.]
++* [<https://github.com/vitiral/civlua.pvc/commits/main/>]: is literally the git
++  repository for your [$.pvc/] directory. While developing we can push
++  patches/branches/whatever here.
 +]
 +
-+When pvc commands are run, these directories are modified. For example:[+
-+* [$at main#123] walks patch files to create a new
-+  [$.pvc/main/patch/01/123.snap/] directory and updates the local directory to
-+  match.
++[*First], put [$.pvc/] in your main repo's [$.gitignore]
++[##
++echo .pvc >> .gitignore
++]##
 +
-+* [$commit] creates a new [$patch/01/123.p] file and corresponding
-+  [$patch/01/123.snap/] directory which is identical to the local directory.
++[*Second], follow the [<#pvc-init>] section above. This should include adding
++all your files to pvc and making your first pvc commit.
++
++[*Third], [$cd .pvc/] and create your git repository [,inside the .pvc/
++directory]. This will literally track your patch files themselves. Use the
++following as your [$.pvc/.gitignore]. You may also want to add a [$README.md]
++directing folks to your main git repo.
++[##
++# .pvc/.gitignore
++**/*.snap/
++backup/
++]##
++
++Finally, add the following to your [$.bashrc]
++[{## lang=sh}
++# Note: you must also have pvc aliased
++function pvcp() {
++  desc="$(pvc at): $(pvc desc --full)"
++  (cd .pvc/ &&
++    git add ./ &&
++    git commit -am "$desc" &&
++    git push origin main)
++}
++]##
++
++Now you can hack using [$pvc commit] etc and push to your [$repo.pvc] by
++simply calling [$pvcp]. Your git commit log will be your current [$at]
++location followed by the commit message. When you want to push your
++documentation or releases to git, simply do so -- your main commit log
++won't be polluted by commiting pvc files.
++
++[{h1 name=pvc-arch}Architecture]
++
++This architecture is given both so users can debug or fix any errors as well as
++to make it easier to create other implementations of pvc (i.e. in bash).
++
++pvc is composed of the following components: [+
++* [*repo]: the pvc repo (repository) is stored in the [$.pvc/] directory inside of
++  a [*project]. It contains directories (which are the branches) and the plaintext file
++  [$at] which defines the "current commit" as a [*commit reference] (i.e. [$branch#123]).
++  Additionally it contains: [+
++  * [$backup/] directory, which contain [$name-<epochsec>/] directories for backups. In
++    general, pvc should not delete things but should instead move things to a backup
++    directory, reporting these operations to the user (and possibly a log file as well).
++  ]
++
++* [*pvcpaths] is the project-local [$.pvcpaths] file which contains a
++  newline-separated list of project-relative paths.  This is used by pvc to
++  determine which paths are tracked. It's contents are tracked as a normal file
++  (it is included in the patch diff).
++
++* [*branch]: a branch is a directory inside the repo (i.e. [$.pvc/main/]). It
++  contains the [$patch/] directory (described in [*commit]) and the plain-text files:
++  [+
++  * [*base]: contains [$branch#123]. This file is not present if the branch is
++    the trunk.
++  * [*tip]: contains an ascii decimal number, representing the last patch id.
++  ]
++
++* [*branch (action)]: to "create a branch" means to create a new directory
++  inside [$.pvc/] and initialize it with the proper [$base] and [$tip] files.
++  The base branch must already exist.
++
++* [*commit (noun)]: refers to a single patch file inside of [$.pvc/branch/patch/.../123.p]. [+
++  * The length of [$patch/.../] is stored in [$patch/depth] which is an ascii
++    decimal number, always divisible by 2. Each sub-directory has exactly two
++    digits. For instance, a depth of 4 would store [$12.p] in
++    [$patch/00/00/12.p] and store [$123456.p] in [$12/34/123456.p].
++
++  * [*description]: the top of the patch file (before the first unidiff)
++    contains a plain-text description of the commit.
++
++  * [*diffs]: the rest of the patch file contains a series of file differences
++    from the previous patch version in the [@unidiff] (aka [$diff -u]) format.
++
++  * [*commit] is often shorthand for the [$commit reference] (i.e.
++    [$branch#123]), which refers uniquely to a specific branch and patch file
++    or snapshot directory.
++  ]
++
++* [*commit (action)]: "making a commit" means to take the difference of the
++   current directory and store it as a patch file in the branch's [$patch/]
++   directory.
++
++* [*snapshot]: a snapshot is the local directory state at a specific commit. It
++  is a directory which uses the extension [$.snap/] inside of the patch
++  directory, i.e. [$patch/00/123.snap/].
++
++* [*checkout (action)]: to "checkout a commit" means to make the local project
++  directory the same as the commit. This is performed by finding the closest
++  [*snapshot] and applying commit patches (either forwards or backwards) in
++  order to make the snapshot reflect the commits state.
++
++* [*rebase (action)]: to "rebase a branch" means to increase the id of it's
++  [*base]. This is accomplished by making a copy of the new id's snapshot and
++  repeatedly applying the unix [$merge] command (or equivalent) on each change,
++  using the copied snapshot as [$to] and incrementing the [$base] along the
++  change patches. Each new [$patch] file should be stored, incrementing from
++  the base. [+
++
++  * the software should detect if conflicts are unresolveable and exit, telling the
++    user how to fix them. The software should be able to resume the rebase once
++    the conflicts are resolved.
++
++  * For example, the reference implementation creates a new branch called
++    [$branch__rebase] to perform this action. When calling rebase, it first
++    checks for this branch and attempts to resume from it. On failure,
++    it tells the user where the failing files that need to be fixed are
++    located.
++
++  * when the rebase is complete, the old branch should be moved to [$.pvc/backup]
++    then replaced with the rebased version.
++  ]
++
++* [*merge]: merges a branch onto another one. The branch must already be
++  rebased to the tip (also called a "fast forward merge"), so this is literally
++  just copying the patch files and incrementing the [*tip].
++
++* [*squash]: combines multiple commits into one, moving larger commits down.
++  The descriptions should be concatenated, and can be edited separately by the
++  user.
++
++* [*export]: simply copies a [*branch] without it's snapshot directories to a
++  separate directory, which can be sent to a maintainer to be merged.
 +]
++
++[{h2}Other Operations]
++Other operations, such as showing commit messages or ammending a commit, are
++not defined explicitly, but you can see the reference implementation for
++details. Typically their implementation is either straightforward or can be
++performed by variations of the above operations.
++
++Also, operations which mutate the meaning of a commit (such as squash or
++rebase) should check to make sure that no branches depend on the branch being
++mutated.
 +
 +[{! :href=https://en.wikipedia.org/wiki/Diff#Unified_format}unidiff]
 +[{! :href=https://en.wikipedia.org/wiki/Tar_(computing)}tarball]
 
 --- /dev/null
 +++ cmd/pvc/pvc.lua
-@@ -0,0 +1,1051 @@
+@@ -0,0 +1,1074 @@
 +local G = G or _G
 +local M = G.mod and mod'pvc2' or setmetatable({}, {})
 +MAIN = G.MAIN or M
@@ -6190,7 +6378,7 @@ initial commit
 +local kev   = require'ds.kev'
 +local ix    = require'civix'
 +local lines = require'lines'
-+local T = require'civtest'.Test
++local T = require'civtest'
 +
 +local pu = require'pvc.unix'
 +
@@ -6235,8 +6423,8 @@ initial commit
 +end
 +
 +local loadPaths = function(P) --> list
-+  local paths = lines.load(P..M.PVCPATHS)
-+  push(paths, '.pvcpaths')
++  local paths = ds.BiMap(lines.load(P..M.PVCPATHS))
++  if not paths[M.PVCPATHS] then push(paths, M.PVCPATHS) end
 +  return paths
 +end
 +
@@ -6265,11 +6453,9 @@ initial commit
 +---
 +--- Note: the passed in paths are still relative.
 +local mapPvcPaths = function(dir1, dir2, fn)
-+  local paths1, paths2 = {}, {}
-+  for p in io.lines(dir1..M.PVCPATHS) do paths1[p] = 1 end
-+  for p in io.lines(dir2..M.PVCPATHS) do paths2[p] = 1 end
-+  for p1 in pairs(paths1) do fn(p1, paths2[p1] and p1 or nil) end
-+  for p2 in pairs(paths2) do
++  local paths1, paths2 = loadPaths(dir1), loadPaths(dir2)
++  for _, p1 in ipairs(paths1) do fn(p1, paths2[p1] and p1 or nil) end
++  for _, p2 in ipairs(paths2) do
 +    if not paths1[p2] then fn(nil, p2) end
 +  end
 +end
@@ -6426,85 +6612,90 @@ initial commit
 +-- Branch
 +
 +--- return the branch path in project regardless of whether it exists
-+M.branchPath = function(pdir, branch, dot)
++M.branchDir = function(P, branch, dot)
 +  assert(branch, 'branch is nil')
 +  assert(not M.RESERVED_NAMES[branch], 'branch name is reserved')
-+  return pth.concat{pdir, dot or '.pvc', branch, '/'}
++  return pth.concat{P, dot or '.pvc', branch, '/'}
 +end
 +
-+M.getbase = function(bpath, br) --> br, id
-+  bpath = bpath..'base'
++M.getbase = function(bdir, br) --> br, id
++  local bpath = bdir..'base'
 +  if ix.exists(bpath) then return M.parseBranch(pth.read(bpath))
 +  else return br, 0 end
 +end
-+M.rawtip = function(bpath, id)
-+  if id then pth.write(toDir(bpath)..'tip', tostring(id))
-+  else return readInt(toDir(bpath)..'tip') end
++M.rawtip = function(bdir, id)
++  if id then pth.write(toDir(bdir)..'tip', tostring(id))
++  else return readInt(toDir(bdir)..'tip') end
 +end
-+M.depth = function(bpath) return readInt(toDir(bpath)..'patch/depth') end
++M.depth = function(bdir) return readInt(toDir(bdir)..'commit/depth') end
 +
-+M.patchPath = function(bpath, id, last, depth) --> string?
-+  depth = depth or M.depth(bpath)
++M.patchPath = function(bdir, id, last, depth) --> string?
++  depth = depth or M.depth(bdir)
 +  if M.calcPatchDepth(id) > depth then return end
 +  local dirstr = tostring(id):sub(1,-3)
 +  dirstr = srep('0', depth - #dirstr)..dirstr -- zero padded
-+  local path = {bpath, 'patch'}; for i=1,#dirstr,2 do
++  local path = {bdir, 'commit'}; for i=1,#dirstr,2 do
 +    push(path, dirstr:sub(i,i+1)) -- i.e. 00/12.p
 +  end
-+  push(path, tostring(id)..(last or ''))
++  push(path, tostring(id)..(last or '.p'))
 +  return pconcat(path)
 +end
 +
 +--- Get the snap/ path regardless of whether it exists
-+M.snapDir = function(bpath, id) --> string?
-+  return M.patchPath(bpath, id, '.snap/')
++M.snapDir = function(bdir, id) --> string?
++  return M.patchPath(bdir, id, '.snap/')
 +end
 +
-+local function initBranch(bpath, id)
++local function initSnap0(snap)
++  ix.forceWrite(snap..M.PVCPATHS, M.INIT_PVCPATHS)
++  ix.forceWrite(snap..'PVC_DONE', '')
++end
++
++local function initBranch(bdir, id)
 +  assert(id >= 0)
-+  assertf(not ix.exists(bpath), '%s already exists', bpath)
++  assertf(not ix.exists(bdir), '%s already exists', bdir)
 +  local depth = M.calcPatchDepth(id + 1000)
-+  trace('initbranch %s', bpath)
-+  ix.mkTree(bpath, {
-+    tip=tostring(id), patch = {depth=tostring(depth)},
++  trace('initbranch %s', bdir)
++  ix.mkTree(bdir, {
++    tip=tostring(id), commit = {depth=tostring(depth)},
 +  }, true)
-+  if id ~= 0 then return bpath end
-+  local ppath = M.patchPath(bpath, id, '', depth)
-+  ix.forceWrite(ppath..'.snap/.pvcpaths', M.INIT_PVCPATHS)
-+  ix.forceWrite(ppath..'.snap/PVC_DONE', '')
++  if id ~= 0 then return bdir end
++  local ppath = M.patchPath(bdir, id, '', depth)
++  initSnap0(ppath..'.snap/')
 +end
 +
 +--- Snapshot the branch#id by applying patches.
 +--- Return the snapshot directory
-+M.snapshot = function(pdir, br,id) --> .../id.snap/
++M.snapshot = function(P, br,id) --> .../id.snap/
 +  trace('snapshot %s#%s', br,id)
 +  -- f=from, t=to
-+  local bpath = M.branchPath(pdir, br)
-+  local snap = M.snapDir(bpath, id)
++  local bdir = M.branchDir(P, br)
++  local snap = M.snapDir(bdir, id)
 +  if ix.exists(snap) then return snap, id end
-+  local bbr,bid = M.getbase(bpath, br)
-+  if id == bid then return M.snapshot(pdir, bbr,bid) end
-+  trace('findSnap %s id=%s with base %s#%s', bpath, id, bbr,bid)
++  if id == 0 then return initSnap0(snap) end
++  local bbr,bid = M.getbase(bdir, br)
++  if id == bid then return M.snapshot(P, bbr,bid) end
++  trace('findSnap %s id=%s with base %s#%s', bdir, id, bbr,bid)
 +
-+  local tip      = M.rawtip(bpath)
++  local tip      = M.rawtip(bdir)
 +  local fsnap, fid -- find the snap/id to patch from
 +  local idl, idr = id-1, id+1
 +  while (bid <= idl) or (idr <= tip) do
-+    snap = M.patchPath(bpath, idl, '.snap/PVC_DONE')
++    snap = M.patchPath(bdir, idl, '.snap/PVC_DONE')
 +    if ix.exists(snap) then
-+      fsnap, fid = M.snapDir(bpath,idl), idl; break
++      fsnap, fid = M.snapDir(bdir,idl), idl; break
 +    end
 +    if bid == idl then
-+      fsnap, fid = M.snapshot(pdir, bbr,bid), idl; break
++      fsnap, fid = M.snapshot(P, bbr,bid), idl; break
 +    end
-+    snap = M.patchPath(bpath, idr, '.snap/PVC_DONE')
++    snap = M.patchPath(bdir, idr, '.snap/PVC_DONE')
 +    if ix.exists(snap) then
-+      fsnap, fid = M.snapDir(bpath,idr), idr; break
++      fsnap, fid = M.snapDir(bdir,idr), idr; break
 +    end
 +    idl, idr = idl-1, idr+1
 +  end
-+  if not fsnap then error(bpath..' does not have snapshot '..id) end
-+  local tsnap = M.snapDir(bpath, id)
++  if not fsnap then error(bdir..' does not have snapshot '..id) end
++  local tsnap = M.snapDir(bdir, id)
 +  trace('creating snapshot %s from %s', tsnap, fsnap)
 +  if ix.exists(tsnap) then ix.rmRecursive(tsnap) end
 +  ix.mkDir(tsnap)
@@ -6513,7 +6704,7 @@ initial commit
 +  local inc   = (fid <= id) and 1       or -1
 +  fid = fid + inc
 +  while true do
-+    local ppath = M.patchPath(bpath, fid, '.p')
++    local ppath = M.patchPath(bdir, fid)
 +    trace('patching %s with %s', tsnap, ppath)
 +    patch(tsnap, ppath)
 +    if fid == id then break end
@@ -6525,8 +6716,8 @@ initial commit
 +end
 +
 +--- increase the depth of branch by 2, adding a [$00/] directory.
-+M.deepen = function(bpath)
-+  local depth, pp, zz = M.depth(bpath), bpath..'patch/', bpath..'00/'
++M.deepen = function(bdir)
++  local depth, pp, zz = M.depth(bdir), bdir..'commit/', bdir..'00/'
 +  ix.mv(pp, zz); ix.mkDir(pp) ix.mv(zz, pp)
 +  pth.write(pp..'depth', tostring(depth + 2))
 +end
@@ -6542,30 +6733,30 @@ initial commit
 +end
 +
 +--- get or hard set the current branch/id
-+M.rawat = function(pdir, branch, id)
-+  local apath = pth.concat{pdir, '.pvc/at'}
++M.rawat = function(P, branch, id)
++  local apath = pth.concat{P, '.pvc/at'}
 +  if branch then pth.write(apath, sfmt('%s#%s', branch, id))
 +  else    return M.parseBranch(pth.read(apath)) end
 +end
 +
 +--- get or set where the working id is at.
-+M.at = function(pdir, nbr,nid) --!!> branch?, id?
++M.at = function(P, nbr,nid) --!!> branch?, id?
 +  -- c=current, n=next
-+  local cbr, cid = M.rawat(pdir); if not nbr then return cbr, cid end
-+  local npath = M.branchPath(pdir, nbr)
++  local cbr, cid = M.rawat(P); if not nbr then return cbr, cid end
++  local npath = M.branchDir(P, nbr)
 +
 +  nid = nid or M.rawtip(npath)
 +  trace('at %s#%i -> %s#%i', cbr, cid, nbr, nid)
-+  local csnap  = M.snapshot(pdir, cbr,cid)
-+  local nsnap  = M.snapshot(pdir, nbr,nid)
++  local csnap  = M.snapshot(P, cbr,cid)
++  local nsnap  = M.snapshot(P, nbr,nid)
 +  trace('at snaps %s -> %s', csnap, nsnap)
 +
-+  local npaths = loadLineSet(nsnap..M.PVCPATHS)
++  local npaths = loadPaths(nsnap)
 +
 +  local ok, cpPaths, rmPaths = true, {}, {}
-+  for path in pairs(npaths) do
-+    if ix.pathEq(pdir..path, nsnap..path) then goto cont end -- local==next
-+    if ix.pathEq(pdir..path, csnap..path) then -- local didn't change
++  for _, path in ipairs(npaths) do
++    if ix.pathEq(P..path, nsnap..path) then goto cont end -- local==next
++    if ix.pathEq(P..path, csnap..path) then -- local didn't change
 +      if not ix.pathEq(csnap..path, nsnap..path) then -- next did change
 +        push(cpPaths, path)
 +      end
@@ -6583,8 +6774,8 @@ initial commit
 +  -- look at paths in current but not next
 +  for path in io.lines(csnap..M.PVCPATHS) do
 +    if npaths[path]              then goto cont end
-+    if not ix.exists(pdir..path) then goto cont end -- already deleted
-+    if ix.pathEq(pdir..path, csnap..path) then push(rmPaths, path)
++    if not ix.exists(P..path) then goto cont end -- already deleted
++    if ix.pathEq(P..path, csnap..path) then push(rmPaths, path)
 +    else
 +      f:styled('error',
 +        sfmt('path %s changed but would be removed', path), '\n')
@@ -6601,19 +6792,19 @@ initial commit
 +  ]], cbr,cid, nbr,nid)) end
 +  for _, path in ipairs(cpPaths) do
 +    trace('checkout cp: %s', path)
-+    ix.forceCp(nsnap..path, pdir..path)
++    ix.forceCp(nsnap..path, P..path)
 +  end
 +  for _, path in ipairs(rmPaths) do
 +    trace('checkout rm: %s', path)
-+    ix.rmRecursive(pdir..path)
++    ix.rmRecursive(P..path)
 +  end
-+  M.rawat(pdir, nbr,nid)
++  M.rawat(P, nbr,nid)
 +  io.fmt:styled('notify', sfmt('pvc: at %s#%s', nbr,nid), '\n')
 +end
 +
 +--- update paths file (path) with the added and removed items
-+M.pathsUpdate = function(pdir, add, rm)
-+  local pfile = pth.concat{pdir, M.PVCPATHS}
++M.pathsUpdate = function(P, add, rm)
++  local pfile = pth.concat{P, M.PVCPATHS}
 +  local paths = assert(lines.load(pfile), pfile)
 +  if add then ds.extend(paths, add) end
 +  if rm and rm[1] then rm = ds.Set(rm) end
@@ -6629,50 +6820,50 @@ initial commit
 +--- * [$branch] or [$branch#id]
 +--- * Special: at
 +--- ]
-+M.resolve = function(P, branch) --> br, id, bpath
++M.resolve = function(P, branch) --> br, id, bdir
 +  local br, id = M.parseBranch(branch)
 +  if not br then error('unknown branch: '..branch) end
 +  if br == 'local' then error('local not valid here') end
 +  if br == 'at'  then br, id = M.rawat(P) end
-+  return br, id, M.branchPath(P, br)
++  return br, id, M.branchDir(P, br)
 +end
 +
 +--- resolve and take snapshot, permits local
-+M.resolveSnap = function(pdir, branch) --> snap/, br, id, bpath
++M.resolveSnap = function(P, branch) --> snap/, br, id, bdir
 +  if branch:find'/' then return branch end -- directory
-+  if branch == 'local' then return pdir end
-+  local br, id, bdir = M.resolve(pdir, branch)
-+  return M.snapshot(pdir, br, id or M.rawtip(bdir)), br, id, bdir
++  if branch == 'local' then return P end
++  local br, id, bdir = M.resolve(P, branch)
++  return M.snapshot(P, br, id or M.rawtip(bdir)), br, id, bdir
 +end
 +
 +--- resolve two branches into their branch directories. Defaults:[+
 +--- * br1 = 'at'
 +--- * br2 = 'local'
 +--- ]
-+M.resolve2 = function(pdir, br1, br2) --> branch1/ branch2/
-+  return  M.resolveSnap(pdir, br1 or 'at'),
-+          M.resolveSnap(pdir, br2 or 'local')
++M.resolve2 = function(P, br1, br2) --> branch1/ branch2/
++  return  M.resolveSnap(P, br1 or 'at'),
++          M.resolveSnap(P, br2 or 'local')
 +end
 +
-+M.diff = function(pdir, branch1, branch2) --> Diff
-+  return M.Diff:of(M.resolve2(pdir, branch1, branch2))
++M.diff = function(P, branch1, branch2) --> Diff
++  return M.Diff:of(M.resolve2(P, branch1, branch2))
 +end
 +
-+M.init = function(pdir, branch)
-+  pdir, branch = toDir(pdir), branch or 'main'
-+  local dot = pdir..'.pvc/';
++M.init = function(P, branch)
++  P, branch = toDir(P), branch or 'main'
++  local dot = P..'.pvc/';
 +  if ix.exists(dot) then error(dot..' already exists') end
 +  ix.mkTree(dot, {backup = {}}, true)
-+  initBranch(M.branchPath(pdir, branch), 0)
-+  pth.write(pdir..M.PVCPATHS, M.INIT_PVCPATHS)
-+  pth.write(pdir..'.pvcignore', '')
-+  M.rawat(pdir, branch, 0)
++  initBranch(M.branchDir(P, branch), 0)
++  pth.write(P..M.PVCPATHS, M.INIT_PVCPATHS)
++  pth.write(P..'.pvcignore', '')
++  M.rawat(P, branch, 0)
 +  io.fmt:styled('notice', 'initialized pvc repo '..dot, '\n')
 +end
 +
 +--- Create a patch file from two branch arguments (see resolve2).
-+M.patch = function(pdir, br1, br2) --> string, s1, s2
-+  return M.Diff:of(M.resolve2(pdir, br1, br2)):patch()
++M.patch = function(P, br1, br2) --> string, s1, s2
++  return M.Diff:of(M.resolve2(P, br1, br2)):patch()
 +end
 +
 +
@@ -6681,7 +6872,7 @@ initial commit
 +      or line:sub(1,3) == '+++'
 +      or line:sub(1,2) == '!!'
 +end
-+M.commit = function(pdir, desc) --> snap/, id
++M.commit = function(P, desc) --> snap/, id
 +  assert(desc, 'commit must provide description')
 +  for _, line in ds.split(desc, '\n') do
 +    assert(not isPatchLike(line),
@@ -6689,44 +6880,47 @@ initial commit
 +    .." at the start of a line: +++, ---, !!")
 +  end
 +
-+  local br, id = M.rawat(pdir)
-+  local bp, cid = M.branchPath(pdir, br), id+1
++  local br, id = M.rawat(P)
++  local bp, cid = M.branchDir(P, br), id+1
 +  trace('start commit %s/%s', br, cid)
 +  if id ~= M.rawtip(bp) then error(s[[
 +    ERROR: working id is not at tip. Solutions:
 +    * stash -> at tip -> unstash -> commit
 +    * prune: move or delete downstream changes.
 +  ]])end
-+  M.pathsUpdate(pdir) -- sort unique
++  M.pathsUpdate(P) -- sort unique
 +
 +  -- b=base c=change
-+  if M.calcPatchDepth(cid) > M.depth(bp) then M.deepen(bp) end
-+  local bsnap = M.snapshot(pdir, br,id)
-+  -- TODO(commit): add description
-+  local patchf = M.patchPath(bp, cid, '.p')
-+  ix.forceWrite(patchf,
-+    sconcat('\n', desc, M.Diff:of(bsnap, pdir):patch()))
-+  local csnap = M.snapshot(pdir, br,cid)
-+  for path in io.lines(pdir..M.PVCPATHS) do
-+    T.pathEq(pdir..path, csnap..path)
++  local bsnap = M.snapshot(P, br,id)
++  local patchf = M.patchPath(bp, cid)
++  local diff = M.Diff:of(bsnap, P)
++  if not diff:hasDiff() then
++    error('invalid commit: no differences detected')
 +  end
-+  M.rawtip(bp, cid); M.rawat(pdir, br, cid)
++  if M.calcPatchDepth(cid) > M.depth(bp) then M.deepen(bp) end
++  ix.forceWrite(patchf,
++    sconcat('\n', desc, diff:patch()))
++  local csnap = M.snapshot(P, br,cid)
++  for path in io.lines(P..M.PVCPATHS) do
++    T.pathEq(P..path, csnap..path)
++  end
++  M.rawtip(bp, cid); M.rawat(P, br, cid)
 +  io.fmt:styled('notify', sfmt('commited %s#%s to %s', br, cid, patchf), '\n')
 +  return csnap, cid
 +end
 +
 +--- get the conventional brName, id for a branch,id pair
-+M.nameId = function(pdir, branch,id) --> br,id
-+  local br,bid; if not branch then br,bid = M.at(pdir)
++M.nameId = function(P, branch,id) --> br,id
++  local br,bid; if not branch then br,bid = M.at(P)
 +  else                             br,bid = M.parseBranch(branch) end
-+  return br, id or bid or M.rawtip(M.branchPath(pdir, br))
++  return br, id or bid or M.rawtip(M.branchDir(P, br))
 +end
 +
-+M.branch = function(pdir, name, fbr,fid) --> bpath, id
-+  local fpath = M.branchPath(pdir, fbr)
++M.branch = function(P, name, fbr,fid) --> bdir, id
++  local fpath = M.branchDir(P, fbr)
 +  if not ix.exists(fpath) then error(fpath..' does not exist') end
 +  fid = fid or M.rawtip(fpath)
-+  local npath = M.branchPath(pdir, name)
++  local npath = M.branchDir(P, name)
 +  initBranch(npath, fid)
 +  pth.write(npath..'base', sfmt('%s#%s', fbr,fid))
 +  return npath, fid
@@ -6736,9 +6930,9 @@ initial commit
 +local branchesRm = function(a, b) return NOT_BRANCH[a] end
 +
 +--- get all branches
-+M.branches = function(pdir) --> list
++M.branches = function(P) --> list
 +  local entries = {}
-+  local d = pdir..'.pvc/'
++  local d = P..'.pvc/'
 +  for e in ix.dir(d) do
 +    if not NOT_BRANCH[e] and ix.pathtype(d..e) == 'dir' then
 +      push(entries, pth.toNonDir(e))
@@ -6748,8 +6942,8 @@ initial commit
 +  return entries
 +end
 +
-+M.checkBranch = function(pdir, name, checks, dir)
-+  dir = dir or pdir..name
++M.checkBranch = function(P, name, checks, dir)
++  dir = dir or P..name
 +  local bbr,bid = M.getbase(dir, nil)
 +  local tip     = M.rawtip(dir)
 +  if tip <= bid then error(sfmt('tip %i <= baseid %i'..tip, bid)) end
@@ -6757,7 +6951,7 @@ initial commit
 +
 +  if checks.base and not bbr then error(from..' does not have base') end
 +  if bbr then
-+    local bt = M.rawtip(M.branchPath(pdir, bbr))
++    local bt = M.rawtip(M.branchDir(P, bbr))
 +    if bid > bt then error(sfmt(
 +      '%s base.id %s > %s tip of %i', from, bid, bbr, bt
 +    ))end
@@ -6768,10 +6962,10 @@ initial commit
 +  end
 +end
 +
-+M.graft = function(pdir, name, from)
-+  local ndir = pdir..name
++M.graft = function(P, name, from)
++  local ndir = P..name
 +  if ix.exists(ndir) then error(ndir..' already exists') end
-+  M.checkBranch(pdir, name, {base=1}, from)
++  M.checkBranch(P, name, {base=1}, from)
 +  ix.cpRecursive(from, ndir)
 +end
 +
@@ -6803,85 +6997,86 @@ initial commit
 +M.backupDir = function(P, name) --> string
 +  for _=1,10 do
 +    local b = sfmt('%s.pvc/backup/%s-%s/', P, name, M.backupId())
-+    print('!! backupDir', b)
 +    if ix.exists(b) then ix.sleep(0.01) else return b end
 +  end
 +  error('could not find empty backup')
 +end
 +
 +--- rebase the branch (current branch) to make it's baseid=id
-+M.rebase = function(pdir, branch, id)
++M.rebase = function(P, branch, id) --> backup/dir/
 +  local cbr = branch
 +
 +  --- process: repeatedly use merge on the (new) branch__rebase branch.
 +  --- the final result will be in to's last snapshot id
-+  local cpath = M.branchPath(pdir, cbr)
++  local cpath = M.branchDir(P, cbr)
 +  local bbr, bid = M.getbase(cpath, cbr)
-+  M.at(pdir, bbr,bid) -- checkout base to ensure cleaner checkout at end
++  M.at(P, bbr,bid) -- checkout base to ensure cleaner checkout at end
 +
 +  if bbr == cbr then error('the base of '..cbr..' is itself') end
 +  if id == bid then return end
-+  local bpath = M.branchPath(pdir, bbr)
-+  local btip  = M.rawtip(bpath)
++  local bdir = M.branchDir(P, bbr)
++  local btip  = M.rawtip(bdir)
 +  if id > btip then error(id..' is > tip of '..btip) end
 +
-+  local cpath, cid = M.branchPath(pdir, cbr), bid + 1
-+  local ctip       = M.rawtip(cpath)
++  local cdir, cid = M.branchDir(P, cbr), bid + 1
++  local ctip       = M.rawtip(cdir)
 +  local tbr        = cbr..'__rebase'
-+  local tpath      = M.branchPath(pdir, tbr)
-+  local ttip       = id + M.rawtip(cpath) - bid
++  local tdir      = M.branchDir(P, tbr)
++  local ttip       = id + M.rawtip(cdir) - bid
 +
 +  local op = sfmt('rebase %s %s', cbr, bid)
-+  local tsnap; if ix.exists(tpath) then
++  local tsnap; if ix.exists(tdir) then
 +    assert(ix.exists(tsnap))
-+    T.pathEq(tpath..'op', op)
-+    T.eq({bbr,bid}, M.getbase(tpath))
-+    cid   = toint(pth.read(tpath..'rebase'))
-+    tsnap = M.snapDir(tpath, ttip)
++    T.pathEq(tdir..'op', op)
++    T.eq({bbr,bid}, M.getbase(tdir))
++    cid   = toint(pth.read(tdir..'rebase'))
++    tsnap = M.snapDir(tdir, ttip)
 +  else
-+    M.branch(pdir, tbr, bbr,id)
-+    pth.write(tpath..'op', op)
-+    tsnap = M.snapDir(tpath, ttip); ix.mkDirs(tsnap)
-+    cpPaths(M.snapshot(pdir, bbr,id), tsnap)
++    M.branch(P, tbr, bbr,id)
++    pth.write(tdir..'op', op)
++    tsnap = M.snapDir(tdir, ttip); ix.mkDirs(tsnap)
++    cpPaths(M.snapshot(P, bbr,id), tsnap)
 +  end
 +  local tid = id + 1
-+  local tprev = M.snapshot(pdir, bbr,id) -- hard-code first prev
++  local tprev = M.snapshot(P, bbr,id) -- hard-code first prev
 +
 +  while cid <= ctip do
 +    assert(tid <= ttip)
-+    local bsnap = M.snapshot(pdir, cbr,bid)
-+    pth.write(tpath..'rebase', tostring(cid))
-+    M.merge(tsnap, bsnap, M.snapshot(pdir, cbr,cid))
-+    -- TODO(commit): preserve description
-+    tprev = tprev or M.snapshot(pdir, tbr,tid-1)
-+    local tpatch = M.patchPath(tpath,tid, '.p')
++    local bsnap = M.snapshot(P, cbr,bid)
++    pth.write(tdir..'rebase', tostring(cid))
++    local desc = M.desc(M.patchPath(cdir, cid))
++    M.merge(tsnap, bsnap, M.snapshot(P, cbr,cid))
++    tprev = tprev or M.snapshot(P, tbr,tid-1)
++    local tpatch = M.patchPath(tdir,tid)
 +    trace('writing patch %s', tpatch)
-+    ix.forceWrite(tpatch, M.Diff:of(tprev, tsnap):patch())
++    ix.forceWrite(tpatch,
++      concat(desc, '\n')..'\n'..M.Diff:of(tprev, tsnap):patch())
 +    tprev = nil
 +    bid, cid, tid = bid + 1, cid + 1, tid + 1
 +  end
 +
-+  local backup = M.backupDir(pdir, cbr); ix.mkDir(backup)
-+  ix.mv(cpath, backup)
++  local backup = M.backupDir(P, cbr); ix.mkDirs(backup)
++  ix.mv(cdir, backup)
 +  io.fmt:styled('notify',
 +    sfmt('pvc: rebase %s to %s#%s done. Backup at %s', cbr, bbr, id, backup),
 +    '\n')
-+  M.rawtip(tpath, ttip)
-+  ix.rm(tpath..'op'); ix.rm(tpath..'rebase')
-+  ix.mv(tpath, cpath)
-+  M.at(pdir, cbr,ttip)
++  M.rawtip(tdir, ttip)
++  ix.rm(tdir..'op'); ix.rm(tdir..'rebase')
++  ix.mv(tdir, cdir)
++  M.at(P, cbr,ttip)
++  return backup
 +end
 +
 +--- Grow [$to] by copying patches [$from]
 +M.grow = function(P, to, from) --!!>
-+  local fbr, fdir = assert(from, 'must set from'), M.branchPath(P, from)
++  local fbr, fdir = assert(from, 'must set from'), M.branchDir(P, from)
 +  local ftip = M.rawtip(fdir)
 +  local bbr, bid = M.getbase(fdir)
 +  local tbr = to or M.rawat(P)
 +  if bbr ~= tbr then error(sfmt(
 +    'the base of %s is %s, not %s', from, bbr, tbr
 +  ))end
-+  local tdir = M.branchPath(P, tbr)
++  local tdir = M.branchDir(P, tbr)
 +  local ttip = M.rawtip(tdir)
 +  if bid ~= ttip then error(sfmt(
 +    'rebase required (%s tip=%s, %s base id=%s)', tbr, ttip, bbr, bid
@@ -6893,9 +7088,9 @@ initial commit
 +  if M.diff(P):hasDiff() then error'local changes detected' end
 +  -- TODO(sig): check signature
 +  for id=bid+1, M.rawtip(fdir) do
-+    local tpath = M.patchPath(tdir, id, '.p')
++    local tpath = M.patchPath(tdir, id)
 +    assert(not ix.exists(tpath))
-+    local fpath = M.patchPath(fdir, id, '.p')
++    local fpath = M.patchPath(fdir, id)
 +    info('copying: %s -> %s', fpath, tpath)
 +    ix.forceCp(fpath, tpath)
 +  end
@@ -6903,7 +7098,7 @@ initial commit
 +  local back = M.backupDir(P, fbr)
 +  io.fmt:styled('notify',
 +    sfmt('deleting %s (mv %s -> %s)', fbr, fdir, back), '\n')
-+  ix.mv(fdir, back)
++  ix.mkDirs(pth.last(back)); ix.mv(fdir, back)
 +  io.fmt:styled('notify', sfmt('grew %s tip to %s', tbr, ftip), '\n')
 +  M.at(P, to,ftip)
 +end
@@ -6925,48 +7120,50 @@ initial commit
 +  assert(br and bot and top, 'must set all args')
 +  assert(top > 0)
 +  if top - bot <= 0 then
-+    io.fmt:notify('error', 'squashing ids [%s - %s] is a noop', bot, top)
++    io.fmt:styled('error', sfmt('squashing ids [%s - %s] is a noop', bot, top), '\n')
 +    return
 +  end
-+  local bdir = M.branchPath(P, br)
++  local bdir = M.branchDir(P, br)
 +  local tip, bbr, bid = M.rawtip(bdir), M.getbase(P, br)
-+  if bot <= bid  then error(sfmt('bottom %i <= base id %s', top, bid)) end
-+  if top  >  tip then error(sfmt('top %i > tip %i', top, tip)) end
++  if bot <= bid then error(sfmt('bottom %i <= base id %s', top, bid)) end
++  if top >  tip then error(sfmt('top %i > tip %i', top, tip)) end
 +  M.at(P, br,top)
-+  local back = M.backupDir(P, br..'-squash'); ix.mkDir(back)
++  local back = M.backupDir(P, br..'-squash'); ix.mkDirs(back)
 +  local desc = {}
-+  local last = M.patchPath(bdir, tip, '.p')
++  local last = M.patchPath(bdir, tip)
 +  if not ix.exists(last) then error(last..' does not exist') end
 +
 +  local patch = M.Diff:of(M.snapshot(P, br,bot-1), M.snapshot(P, br,top))
 +    :patch()
++  -- move [bot,top] commits to backup/ and remove their .snap/ directories.
 +  for i=bot,top do
-+    local path = M.patchPath(bdir, i, '.p')
++    local path = M.patchPath(bdir, i)
 +    ds.extend(desc, M.desc(path))
 +    local bpatch = back..i..'.p'
 +    ix.mv(path, bpatch)
 +    io.fmt:styled('notify', sfmt('mv %s %s', path, bpatch), '\n')
 +    ix.rmRecursive(M.snapDir(bdir, i))
 +  end
-+  local f = io.open(M.patchPath(bdir, top, '.p'), 'w')
++  -- write the squashed patch file
++  local f = io.open(M.patchPath(bdir, bot), 'w')
 +  for _, line in ipairs(desc) do f:write(line, '\n') end
-+  f:write(patch); f:flush(); f:close()
++  f:write(patch); f:close()
 +
-+  ix.rmRecursive(M.snapDir(bdir, bot))
-+  local bi = bot + 1
-+  for i=top+1, tip do
++  ix.rmRecursive(M.snapDir(bdir, bot)) -- TODO: remove this I think
++
++  -- move the patch files above top down to be above squashed bot
++  local bi = bot
++  for i=top+1, tip do; bi = bi + 1
 +    ix.rmRecursive(M.snapDir(bdir, i))
-+    local bpat = M.patchPath(bdir, bi, '.p')
-+    local tpat = M.patchPath(bdir, i, '.p')
-+    io.fmt:styled('notify', sfmt('mv %s %s', tpat, bpat), '\n')
-+    ix.mv(tpat, bpat)
-+    bi = bi + 1
++    local botPat = M.patchPath(bdir, bi)
++    local topPat = M.patchPath(bdir, i)
++    io.fmt:styled('notify', sfmt('mv %s %s', topPat, botPat), '\n')
++    ix.mv(topPat, botPat)
 +  end
-+  local ppath = M.patchPath(bdir, bot, '.p')
-+  pth.write(ppath, patch)
-+  M.rawat(P, br,bot)
++
++  M.rawat(P, br,bot); M.rawtip(bdir,bi)
 +  io.fmt:styled('notify',
-+    sfmt('squashed [%s - %s] into %s', bot, top, ppath), '\n')
++    sfmt('squashed [%s - %s] into %s. New tip=%i', bot, top, bot, bi), '\n')
 +end
 +
 +local popdir = function(args)
@@ -7010,12 +7207,12 @@ initial commit
 +
 +--- [$commit]: add changes to the current branch as a patch and move [$at]
 +--- forward. The commit message can be written to the COMMIT file or be
-+--- specified after the [$--] argument, where multiple arguments are newline
++--- specified after the [$--] argument, where multiple arguments are space
 +--- separated.
 +M.main.commit = function(args)
 +  local P = popdir(args)
 +  local desc = shim.popRaw(args)
-+  if desc then desc = concat(desc, '\n')
++  if desc then desc = concat(desc, ' ')
 +  else         desc = pth.read(P..'COMMIT') end
 +  M.commit(P, desc)
 +end
@@ -7037,7 +7234,7 @@ initial commit
 +M.main.tip = function(args) --> string
 +  local P = popdir(args)
 +  local out = sfmt('%s#%s',
-+    M.rawtip(M.branchPath(P, args[1] or M.rawat(P))))
++    M.rawtip(M.branchDir(P, args[1] or M.rawat(P))))
 +  print(out); return out
 +end
 +
@@ -7075,7 +7272,7 @@ initial commit
 +  if not args[1] then -- just show all branches
 +    for _, br in ipairs(M.branches(D)) do
 +      if full then
-+        local bdir = M.branchPath(D, br)
++        local bdir = M.branchDir(D, br)
 +        local tip, base,bid = M.rawtip(bdir), M.getbase(bdir, nil)
 +        io.user:styled('notify', sfmt('%s\ttip=%s%s',
 +          br, tip, base and sfmt('\tbase=%s#%s', base,bid) or ''), '\n')
@@ -7086,16 +7283,16 @@ initial commit
 +  local br, id = M.parseBranch(args[1])
 +  if not br or br == 'at' then br, id = M.rawat(D) end
 +
-+  local num, dir = toint(args.num or 10), M.branchPath(D, br)
++  local num, dir = toint(args.num or 10), M.branchDir(D, br)
 +  if not id then id = M.rawtip(dir) end
 +  local bbr, bid = M.getbase(dir)
 +  for i=id,id-num+1,-1 do
 +    if i <= 0 then break end
 +    if i == bid then
-+      br, dir = bbr, M.branchPath(D, bbr)
++      br, dir = bbr, M.branchDir(D, bbr)
 +      bbr, bid = M.getbase(dir)
 +    end
-+    local ppath = M.patchPath(dir, i, '.p')
++    local ppath = M.patchPath(dir, i)
 +    local desc = M.desc(ppath, not full and 1 or nil)
 +    io.user:styled('notify', sfmt('%s#%s:', br,i), '')
 +    io.user:level(1)
@@ -7115,23 +7312,27 @@ initial commit
 +  local P = popdir(args)
 +  local br, id, bdir = M.resolve(P,
 +    args[1] == '--' and 'at' or args[1] or 'at')
-+  local desc = shim.popRaw(args) or lines.load(args[2])
-+  local oldp = M.patchPath(bdir, id, '.p')
-+  if not desc then
-+    return print(concat(M.desc(oldp), '\n'))
-+  end
-+  local newp = sconcat('', bdir, tostring(id), '.p')
-+  local n = io.open(newp, 'w')
-+  for _, line in ipairs(desc) do n:write(line, '\n') end
-+  local o = io.open(oldp, 'r')
-+  for line in o:lines() do
++  local desc = shim.popRaw(args)
++  if desc        then desc = concat(desc, ' ')
++  elseif args[2] then desc = pth.read(args[2]) end
++  local oldp = M.patchPath(bdir, id)
++  local olddesc = concat(M.desc(oldp), '\n')
++  if not desc then return print(olddesc) end
++  -- Write new description
++  local newp = sconcat('', bdir, tostring(id))
++  local n = assert(io.open(newp, 'w'))
++  n:write(desc, '\n')
++  local o = assert(io.open(oldp, 'r'))
++  for line in o:lines() do -- skip old desc
 +    if isPatchLike(line) then n:write(line, '\n'); break end
 +  end
 +  for line in o:lines() do n:write(line, '\n') end
-+  local back = M.backupDir(P, sfmt('%s#%s', br, id)); ix.mkDir(back)
++  n:close(); o:close()
++  local back = M.backupDir(P, sfmt('%s#%s', br, id)); ix.mkDirs(back)
 +  back = back..id..'.p'
 +  ix.mv(oldp, back)
 +  io.fmt:styled('notify', sfmt('moved %s -> %s', oldp, back), '\n')
++  io.fmt:styled('notify', 'Old description (deleted):', '\n', olddesc, '\n')
 +  ix.mv(newp, oldp)
 +  io.fmt:styled('notify', 'updated desc of '..oldp, '\n')
 +end
@@ -7143,8 +7344,14 @@ initial commit
 +M.main.squash = function(args)
 +  trace('squash%q', args)
 +  local P = popdir(args)
-+  local br,bot = M.resolve(P, assert(args[1], 'must set branch#id (aka "at")'))
-+  local top = toint(assert(args[2], 'must set endId'))
++  local br, bot,top
++  if args[1] then
++    br, bot = M.resolve(P, args[1])
++    top     = toint(assert(args[2], 'must set endId'))
++  else -- local commits
++    br, bot = M.at(P); top = bot + 1
++    M.commit(P, '')
++  end
 +  M.squash(P, br, bot,top)
 +end
 +
@@ -7152,8 +7359,9 @@ initial commit
 +  trace('pvc%q', args)
 +  local cmd = table.remove(args, 1)
 +  local fn = rawget(M.main, cmd); if not fn then
-+    io.fmt:styled('error', cmd..' is not recognized', '\n')
-+    M.main.help()
++    io.fmt:styled('error',
++      cmd and (cmd..' is not recognized') or 'Must provide sub command', '\n')
++    return M.main.help()
 +  end
 +  return fn(args)
 +end
@@ -7163,11 +7371,15 @@ initial commit
 +M.main.rebase = function(args) --> string
 +  local P = popdir(args)
 +  local br = args[1] ~= '' and args[1] or M.rawat(P)
-+  local base = M.getbase(M.branchPath(P,br))
-+  M.rebase(br, M.rawtip(M.branchpath(P, base)))
++  local base = M.getbase(M.branchDir(P,br))
++  M.rebase(P, br, M.rawtip(M.branchDir(P, base)))
 +end
 +
 +--- [$grow from --to=at]: grow [$to] (default=[$at]) using branch from.
++---
++--- ["In other version control systems this is called a
++---   "fast forward merge"
++--- ]
 +M.main.grow = function(args)
 +  local P = popdir(args)
 +  return M.grow(P, args.to, args[1])
@@ -7177,16 +7389,16 @@ initial commit
 +M.main.prune = function(args)
 +  local D = popdir(args)
 +  local br = assert(args[1], 'must specify branch')
-+  local bdir = M.branchPath(D, br)
++  local bdir = M.branchDir(D, br)
 +  assert(ix.exists(bdir), bdir..' does not exist')
-+  local back = M.backupDir(D, br); ix.mkDir(back)
++  local back = M.backupDir(D, br); ix.mkDirs(back)
 +  local id = args[2]
 +  if id then
 +    id = toint(id); local tip = M.rawtip(bdir)
 +    local d = M.depth(bdir)
 +    local undo = {}
 +    for i=id,tip do
-+      local from = M.patchPath(bdir,id, '.p', d)
++      local from = M.patchPath(bdir,id, d)
 +      local to   = sfmt('%s%s.p', back, id)
 +      ix.mv(from, to)
 +      push(undo, sfmt('mv %s %s', to, from))
@@ -7211,21 +7423,20 @@ initial commit
 +  local to = pth.toDir(assert(args[2], 'must specify to/ directory'))
 +  if ix.exists(to) then error('to/ directory already exists: '..to) end
 +
-+  local bdir = M.branchPath(D, br)
++  local bdir = M.branchDir(D, br)
 +  local tip, bbr,bid = M.rawtip(bdir), M.getbase(bdir,nil)
 +
-+  ix.mkDirs(to..'patch/')
++  ix.mkDirs(to..'commit/')
 +  pth.write(bdir..'tip', tip)
-+  ix.cp(bdir..'patch/depth', to..'patch/depth')
++  ix.cp(bdir..'commit/depth', to..'commit/depth')
 +  if bbr then pth.write(bdir..'base', sfmt('%s#%s', bbr,bid)) end
 +  -- Note: if base then first id isn't there
 +  for id=bbr and (bid+1) or bid, tip do
-+    ix.forceCp(M.patchPath(bdir,id, '.p', M.patchPath(to,id, '.p')))
++    ix.forceCp(M.patchPath(bdir,id, M.patchPath(to,id)))
 +  end
 +  io.fmt:styled('notify', sfmt('exported %s to %s', bdir, to))
 +  return to
 +end
-+
 +
 +getmetatable(M).__call = getmetatable(M.main).__call
 +
@@ -7233,7 +7444,7 @@ initial commit
 
 --- /dev/null
 +++ cmd/pvc/pvc/unix.lua
-@@ -0,0 +1,85 @@
+@@ -0,0 +1,93 @@
 +local G = G or _G
 +--------------------------------
 +-- Unix Version Control Functions
@@ -7258,7 +7469,10 @@ initial commit
 +
 +local diffCheckPath = function(p, pl) --> p, pl
 +  if not p then return NULL, NULL end
-+  if ix.stat(p):size() == 0 then error(
++  local st = ix.stat(p); if not st then
++    error(p..' is in .pvcpaths but does not exist')
++  end
++  if st:size() == 0 then error(
 +    p..' has a size of 0, which patch cannot handle'
 +  )end
 +  return p, pl
@@ -7275,7 +7489,9 @@ initial commit
 +    'diff', '-N', a, '--label='..al, b, '--label='..bl,
 +    unified='0', stderr=io.stderr, rc=true}
 +  trace('diff rc=%i', sh:rc())
-+  if sh:rc() > 1 then error('diff failed:\n'..e) end
++  if sh:rc() > 1 then
++    error('diff failed:\n'..(e or o or '(no std err or out)'))
++  end
 +  if o then
 +    if sh:rc() ~= 1 then error('unknown return code: '..sh:rc()) end
 +    if o:sub(1,3) ~= '---' then
@@ -7284,11 +7500,14 @@ initial commit
 +    end
 +    return o
 +  end
-+  error((a or b)..' is empty (https://stackoverflow.com/questions/44427545)')
++  -- https://stackoverflow.com/questions/44427545]])
++  error((a or b)..[[ is empty, which pvc does not support.
++Solution: Add a newline (or any other content) to the file,
++          or delete the file.]])
 +end
 +
 +local patchArgs = function(cwd, path)
-+  return {'patch', '-p0', '--binary', '-fu', input=pth.abs(path), CWD=cwd}
++  return {'patch', '-p0', '-fu', input=pth.abs(path), CWD=cwd}
 +end
 +
 +--- forward patch
@@ -7322,18 +7541,21 @@ initial commit
 
 --- /dev/null
 +++ cmd/pvc/test.lua
-@@ -0,0 +1,256 @@
+@@ -0,0 +1,271 @@
 +
-+local T = require'civtest'.Test
++local T = require'civtest'
 +
 +local pvc = require'pvc'
 +local ds = require'ds'
 +local pth = require'ds.path'
++local fd = require'fd'
 +local ix = require'civix'
 +
 +local TD, D = 'cmd/pvc/testdata/', '.out/pvc/'
 +local pc = pth.concat
 +local s = ds.simplestr
++
++fd.ioStd()
 +
 +--- test some basic internal functions
 +T.internal = function()
@@ -7343,10 +7565,10 @@ initial commit
 +end
 +
 +T.patchPath = function()
-+  T.eq('foo/patch/00/1.p', pvc.patchPath('foo', 1, '.p', 2))
++  T.eq('foo/commit/00/1.p', pvc.patchPath('foo', 1, '.p', 2))
 +end
 +
-+local initPvc = function(d)
++local initPvc = function(d) --> projDir
 +  d = d or D
 +  ix.rmRecursive(d);
 +  pvc.init(d)
@@ -7356,6 +7578,9 @@ initial commit
 +--- test empty files
 +T.empty = function()
 +  local d = initPvc()
++  T.throws('no differences detected', function()
++    pvc.commit(d, 'empty repo')
++  end)
 +  pth.write(d..'empty.txt', '')
 +  pth.append(d..'.pvcpaths', 'empty.txt')
 +  T.throws('has a size of 0', function()
@@ -7363,6 +7588,7 @@ initial commit
 +  end)
 +end
 +
++-- binary not supported
 +T.binary = function()
 +  local P = initPvc()
 +  local bpath, BIN = P..'bin', '\x00\xFF'
@@ -7370,6 +7596,15 @@ initial commit
 +  pth.append(P..'.pvcpaths', 'bin')
 +  T.throws('Binary files /dev/null and bin differ', function()
 +    pvc.commit(P, 'commit binary file')
++  end)
++end
++
++-- missing path is an error
++T.missingPath = function()
++  local P = initPvc()
++  pth.append(P..'.pvcpaths', 'file.dne')
++  T.throws('but does not exist', function()
++    pvc.commit(P, 'commit path dne')
 +  end)
 +end
 +
@@ -7407,7 +7642,7 @@ initial commit
 +    },
 +  })
 +  local Bm = D..'.pvc/main/'
-+  T.path(Bm..'patch/', {
++  T.path(Bm..'commit/', {
 +    depth = '2',
 +    ['00'] = {
 +      ['0.snap'] = {
@@ -7424,7 +7659,7 @@ initial commit
 +  pth.append(D..'.pvcpaths', 'hello/hello.lua')
 +  T.path(D..'.pvcpaths', '.pvcpaths\nstory.txt\nhello/hello.lua\n')
 +  T.eq(pvc.Diff{
-+    dir1=D..'.pvc/main/patch/00/0.snap/', dir2=D,
++    dir1=D..'.pvc/main/commit/00/0.snap/', dir2=D,
 +    equal={}, deleted={},
 +    changed={'.pvcpaths'}, created={'hello/hello.lua', 'story.txt'},
 +  }, pvc.diff(D))
@@ -7441,14 +7676,12 @@ initial commit
 +  ..HELLO_PATCH1
 +  ..'\n'
 +  ..STORY_PATCH1;
-+  print('!! DIFF1')
-+  print(DIFF1)
 +
 +  local br, id = pvc.commit(D, 'desc1')
 +  local p1 = pvc.patchPath(Bm, id, '.p')
 +  T.path(p1, DIFF1)
 +  T.eq({'desc1'}, pvc.desc(p1))
-+  pvc.main.desc{'--', 'desc1 - edited', dir=D}
++  pvc.main.desc{'--', 'desc1', '-', 'edited', dir=D}
 +  T.eq({'desc1 - edited'}, pvc.desc(p1))
 +
 +  local STORY1 = pth.read(TD..'story.txt.1')
@@ -7462,7 +7695,7 @@ initial commit
 +  T.path(Bm, { tip = '1' })
 +  T.eq({'main', 1}, {pvc.at(D)})
 +  T.eq(pvc.Diff{
-+    dir1=D..'.pvc/main/patch/00/1.snap/', dir2=D,
++    dir1=D..'.pvc/main/commit/00/1.snap/', dir2=D,
 +    equal={'.pvcpaths', 'hello/hello.lua', 'story.txt'},
 +    deleted={}, changed={}, created={},
 +  }, pvc.diff(D))
@@ -7473,7 +7706,7 @@ initial commit
 +  assert(not ix.exists(D..'hello/hello.lua'))
 +  T.path(D..'.pvcpaths', '.pvcpaths\n')
 +  T.eq(pvc.Diff{
-+    dir1=D..'.pvc/main/patch/00/1.snap/', dir2=D,
++    dir1=D..'.pvc/main/commit/00/1.snap/', dir2=D,
 +    equal={},
 +    deleted={'hello/hello.lua', 'story.txt'},
 +    changed={'.pvcpaths'},
@@ -7503,7 +7736,7 @@ initial commit
 +
 +  pvc.commit(D, 'desc2')
 +  T.path(Bm, { tip = '2' }); T.eq({'main', 2}, {pvc.at(D)})
-+  T.path(D, EXPECT2); T.path(Bm..'patch/00/2.snap/', EXPECT2)
++  T.path(D, EXPECT2); T.path(Bm..'commit/00/2.snap/', EXPECT2)
 +
 +  -- Create divergent branch which both modify story.txt
 +  local STORY3d = pth.read(TD..'story.txt.3d')
@@ -7514,7 +7747,7 @@ initial commit
 +  T.eq({'dev', 'main'}, pvc.branches(D))
 +  local Bd = D..'.pvc/dev/'
 +  T.path(D, EXPECT2);
-+  T.eq(Bm..'patch/00/2.snap/', pvc.snapshot(D, 'dev', 2))
++  T.eq(Bm..'commit/00/2.snap/', pvc.snapshot(D, 'dev', 2))
 +  pth.write(D..'story.txt', STORY3d); T.path(D, EXPECT3d)
 +  pvc.commit(D, 'desc3d')
 +  T.path(Bd, { tip = '3' }); T.eq({'dev', 3}, {pvc.at(D)})
@@ -7549,11 +7782,12 @@ initial commit
 +  T.eq({'dev', 5}, {pvc.rawat(D)})
 +  T.eq(3, pvc.rawtip(Bm))
 +  T.eq(5, pvc.rawtip(Bd))
++  T.eq({'desc4d'}, pvc.desc(Bd..'commit/00/5.p'))
 +
 +  local EXPECT5 = ds.copy(EXPECT2, {
 +    ['story.txt'] = pth.read(TD..'story.txt.5')
 +  })
-+  T.path(Bd..'patch/00/5.snap/', EXPECT5)
++  T.path(Bd..'commit/00/5.snap/', EXPECT5)
 +  pvc.at(D, 'main',3); T.path(D, EXPECT3m)
 +  pvc.at(D, 'dev',4);
 +
@@ -7572,13 +7806,13 @@ initial commit
 +
 +  -- Squash main commit and first dev commit
 +  pvc.squash(D, 'main', 3,4)
++  T.eq(4, pvc.rawtip(Bm))
 +  T.path(pvc.snapshot(D, 'main', 2), EXPECT2)
 +  T.path(pvc.snapshot(D, 'main', 3), EXPECT4)
 +  pvc.at(D, 'main',2); T.path(D, EXPECT2)
 +  pvc.at(D, 'main',3); T.path(D, EXPECT4)
 +  pvc.at(D, 'main',4); T.path(D, EXPECT5)
 +end
-+
 
 --- /dev/null
 +++ cmd/pvc/testdata/hello.lua.1
@@ -7780,566 +8014,6 @@ initial commit
 +Finished.
 
 --- /dev/null
-+++ lib/civdb/PKG.lua
-@@ -0,0 +1,15 @@
-+name     = 'civdb'
-+summary  = "minimalistic CRUD database"
-+homepage = "https://lua.civboot.org#Package_civdb"
-+license  = "UNLICENSE"
-+version  = '0.1-0'
-+url      = 'git+http://github.com/civboot/civlua'
-+doc = 'README.cxt'
-+srcs = {
-+  'civdb.lua',
-+  'civdb/HashIdx.lua',
-+}
-+deps = {
-+  "lua ~> 5.3",
-+}
-+
-
---- /dev/null
-+++ lib/civdb/README.cxt
-@@ -0,0 +1,59 @@
-+[{h1}civdb: minimalistic CRUD database]
-+
-+CivDB's basic requirements are: [+
-+* "Single file" database: all data is stored in a single file
-+  * indexes can be added which are separate files but all indexes can always be
-+    rebuilt from the single file.
-+
-+* CRUD database: you can create rows, read rows, update rows and delete rows
-+  using an integer row id.
-+
-+* Fast O(1) row creation and updates which can hold arbitrary Lua values
-+  (but typically hold the value referenced by the schema).
-+
-+* Can hold metadata, especially the schema (auto type conversion)
-+]
-+
-+[{h2}Design]
-+The basic design is: [+
-+* The "database" is a folder, i.e. [$path/to/mydata.civdb/]
-+
-+* Within the folder is a single file called `data` which contains entries
-+  which contain the operation and row data encoded using `civdb.encode`
-+  (binary encoding format) [+
-+  * The data file starts with the magic bytes `civdb\0`
-+  * The size of the entry is 7bit encoded, followed by the entry data
-+  ]
-+
-+* Values are de/serialized by first calling [$ds.pod.(from/to)Pod] and then
-+  de/serializing them using [$pod.[de]ser].
-+  ["If the type of fromPod matches the schema then it is first stripped to
-+    save on binary space.
-+  ]
-+
-+* Also within the folder is the [$rows] file, which contains 3-byte positions
-+  into the [$data] file (the start of that row's entry), or `0` if that row
-+  was deleted. [+
-+  * The rows file is updated as the data file is written to. On flush their
-+    timestamps are set to the same value (indicating a reindex is not necessary)
-+  * The [$rows] file is the most basic index as it points to a specific position.
-+    All other indexes operate similarily but instead of pointing to a position
-+    they point to a row.
-+  ]
-+
-+* "Transactions" are written into the [$data] file one at a time. A transaction
-+  is encoded as an "operation" ([$create], [$update(row)], [$delete(row)],
-+  [$metadata]) and a value (except for delete). [+
-+  * When the transaction is written the [$rows] table is updated, and then
-+    other indexes are updated.
-+  ]
-+
-+* Other indexes are stored based on the schema, but are basically just a list of
-+  functions to call every time a row is created or modified (with some sane
-+  defaults for the schema). [+
-+  * These typically modify BOTH a [$field.rhood] and [$field.ll].
-+    The [$field.rhood] contains a 3-byte robin hood hash table which point to
-+    entries in [$field.ll], which is a linked-list file containing the rows
-+    containing that field value.
-+  ]
-+]
-
---- /dev/null
-+++ lib/civdb/civdb.lua
-@@ -0,0 +1,371 @@
-+local G = G or _G
-+--- civdb: minimalistic CRUD database
-+---
-+--- This module exports the encode/decode functions which
-+--- can be used for encoding and decoding plain-old-data.
-+local M = G.mod and mod'civdb' or setmetatable({}, {})
-+
-+local mty = require'metaty'
-+local pkg = require'pkglib'
-+local ds = require'ds'
-+local pth = require'ds.path'
-+local pod = require'pod'
-+local LFile = require'lines.File'
-+local U3File = require'lines.U3File'
-+local fmt = require'fmt'
-+local fbin = require'fmt.binary'
-+local ix = require'civix'
-+
-+local trace = require'ds.log'.trace
-+local encv = require'pod.native'.enci
-+
-+local getmt = getmetatable
-+local byte = string.byte
-+local mtype = math.type
-+local construct = mty.construct
-+local index, newindex = mty.index, mty.newindex
-+local ty = mty.ty
-+local ser, deser = pod.ser, pod.deser
-+local WeakV = ds.WeakV
-+
-+local fileInit = getmetatable(LFile).__call
-+
-+M.DB = mty'DB' {
-+  'path [string]', 'datPath [string]', 'metaPath [string]',
-+  'f [File]', 'mode [string]',
-+  'idxs {str: civdb.Idx}: indexers for a specific key.'
-+  ..' These will be used instead of a full table scan if available.',
-+  '_schema [pod.Podder]: the type to deserialize each row',
-+  '_rows [lines.U3File]: row -> pos',
-+  'cache [ds.WeakV]: cache of rows',
-+  '_eofpos [nil|int]: nil or pos at eof',
-+  '_meta [table]',
-+}
-+getmetatable(M.DB).__call = function(T, t)
-+  error'use :new{} or :load{}'
-+end
-+local DB = M.DB
-+DB.MAGIC = 'civdb\0'
-+DB.IDX_DIR = pth.concat{pth.home(), '.data/rows'}
-+
-+DB.__len = function(db) return #db._rows end
-+
-+---------------------
-+--- Op Type: this specifies what the entry is doing
-+M.Op = mty'Op' {
-+  'kind [civdb.Op.Kind]',
-+  'row  [int]: the row index being modified',
-+  'other [table]',
-+}
-+
-+M.Op.Kind = mty.enum'Op.Kind' {
-+  CREATE = 1, DELETE = 2, UPDATE = 3, OTHER  = 4,
-+}
-+local Op, OpKind = M.Op, M.Op.Kind
-+
-+local CREATE_OP = assert(ser(true))
-+local updateOp = function(row)  return ser( row) end
-+local deleteOp = function(row)  return ser(-row) end
-+local otherOp  = ser
-+
-+--- Op:decode(val) - decode the operation from lua value.
-+Op.decode = function(T, v) --> Op
-+  if v == true then return T{kind=OpKind.CREATE} end
-+  if type(v) == 'table' then return T{kind=OpKind.OTHER, other=v} end
-+  assert(mtype(v) == 'integer', 'invalid op')
-+  if v >= 0    then return T{kind=OpKind.UPDATE, row= v}
-+               else return T{kind=OpKind.DELETE, row=-v} end
-+end
-+
-+----------------------------
-+-- Entry functions: how data is written/read from the file
-+
-+--- read the raw bytes of the next counted entry from a file
-+local readEntryRaw = function(f) --> (string?, lensz|error)
-+  local len, sh, s = 0, 0
-+  while true do
-+    s = f:read(1); if not s then return nil end
-+    local b = byte(s); len = ((0x7F & b) << sh) | len
-+    if (0x80 & b) ~= 0 then sh = sh + 7 else break end
-+  end
-+  trace('readEntry len=%i', len)
-+  s = f:read(len); if not s then return nil, 'readEntry len' end
-+  if not s or len ~= #s then
-+    return nil, sfmt('did not read full len: %i ~= %i', len, #s)
-+  end
-+  return s, (sh + 7) // 7
-+end
-+
-+--- read the Op, oplen and (whole) rawdat of of the next entry from a file
-+--- if the rawdat are decoded they must be offset by oplen+1
-+local readEntryOp = function(f) -- op, oplen, rawdat, lensz
-+  local dat, lensz = readEntryRaw(f)
-+  if not dat then return nil, nil, lensz end
-+  local op, oplen = deser(dat)
-+  trace('readTx: op=%q vlen=%i', op, #dat - oplen)
-+  return Op:decode(op), oplen, dat, lensz
-+end
-+
-+--- write the raw operation and raw data, return bytes written
-+--- Note: the rawop are created with the *Op() functions.
-+local writeEntry = function(f, pos, rawop, dat) --> writelen
-+  local len = #rawop + #dat
-+  assert(pos);
-+  assert(pos == f:seek('set', pos))
-+  local elenstr = encv(len)
-+  assert(f:write(elenstr))
-+  assert(f:write(rawop)); assert(f:write(dat))
-+  trace('pushvalue pos=%i enclen=%i len=%i', pos, #elenstr, len)
-+  return #elenstr + len
-+end
-+
-+
-+-----------------------
-+-- READ
-+
-+local opDeser = function(db, oplen, rawdat)
-+  return deser(rawdat, db._schema, oplen + 1)
-+end
-+local opRead = Op.Kind:matcher{
-+  CREATE = opDeser, UPDATE = opDeser, DELETE = ds.noop,
-+  OTHER = function() error'unreachable' end,
-+}
-+
-+--- Read the row, returning its value
-+--- Note: does not attempt to convert to the schema type.
-+DB.readRaw = function(db, row) --> Op, oplen, rawdat
-+  local pos = db._rows[row]
-+  trace('readRaw row=%i from pos=%s', row, pos)
-+  if not pos or pos == 0 then return end
-+  assert(pos == db.f:seek('set', pos))
-+  return readEntryOp(db.f)
-+end
-+
-+DB.__index = function(db, row)
-+  if type(row) == 'string' then
-+    local mt = getmt(db)
-+    return rawget(mt, row) or index(mt, row)
-+  end
-+  trace('__index row=%i', row)
-+  assert(row >= 1, 'row must be >= 1')
-+  local op, oplen, rawdat = db:readRaw(row, db._schema)
-+  if not op then return end
-+  return opRead[op.kind](db, oplen, rawdat)
-+end
-+
-+-----------------------
-+-- CREATE / UPDATE / DELETE
-+
-+DB.__newindex = function(db, row, v)
-+  if type(row) == 'string' then return newindex(db, row, v) end
-+  assert(row >= 1, 'row must be >= 1')
-+  local len = #db._rows
-+  local f, rows, pos, epos = db.f, db._rows, db._eofpos, nil
-+  if row > len then -----: CREATE
-+    assert(row == len + 1, "can only set from [1,len+1]")
-+    epos = pos + writeEntry(f, pos, CREATE_OP, ser(v, db._schema))
-+    for _, idx in pairs(db.idxs) do idx:create(row, v) end
-+  elseif v == nil then --: DELETE
-+    epos = pos + writeEntry(f, pos, deleteOp(row), '')
-+    for _, idx in pairs(db.idxs) do idx:delete(row) end
-+  else ------------------: UPDATE
-+    epos = pos + writeEntry(f, pos, updateOp(row), ser(v, db._schema))
-+    for _, idx in pairs(db.idxs) do idx:update(row, v) end
-+  end
-+  rows[row], db._eofpos = pos, epos
-+end
-+
-+-----------------------
-+-- META
-+
-+--- [$db:meta()] get's the metadata and [$db:meta(new)] updates it. The
-+--- schema is overriden with the current schema [$PKG_NAME].
-+---
-+--- Note: this updates the metadata inside a [$db] file as well as the
-+--- [$db.meta] file. Do not modify the result of [$:meta()] directly unless you
-+--- are immediately passing it back.
-+DB.meta = function(db, meta)
-+  if not meta then return db._meta end
-+  local pos = db._eofpos
-+  meta.schema = G.PKG_NAMES[db._schema]
-+  db._eofpos = pos + writeEntry(db.f, pos, otherOp{meta=meta}, '')
-+  db._meta = meta
-+end
-+
-+--- [+ * [$db:schema()] returns the current schema
-+---    * [$db:schema(newSchema)] sets a new schema]
-+---
-+--- ["WARNING: the new schema must be byte-compatible with the old one, else
-+---   existing data will break on read. You may need to reindex the table after
-+---   setting a new schema.]
-+DB.schema = function(db, schema) --> current schema
-+  if schema then
-+    local ok, err = pod.isPodder(schema)
-+    if not ok then fmt.errorf('schema %s is not Podder: %s', schema, err) end
-+    db._schema = schema; db:meta(db._meta)
-+  end
-+  return db._schema
-+end
-+
-+-----------------------
-+-- Creating / Loading Database
-+
-+--- Do basic argument checking and initializaiton
-+local dbInit = function(t) --> t
-+  t.idxs = t.idxs or {}
-+  t.path = (not ix.exists(assert(t.path, 'must provide path'))
-+            or ix.isDir(t.path)) and pth.concat{t.path, 'db'}
-+           or t.path
-+  return t
-+end
-+
-+DB.new = function(T, t)
-+  trace('civdb.DB new %q', t)
-+  local schema = assert(ds.popk(t, 'schema'), 'must set schema')
-+  t = dbInit(t); t._meta = ds.popk(t, 'meta') or {}
-+  t = construct(T, t)
-+  local f, err, rows
-+  ix.mkDirs((pth.last(t.path)))
-+  f,    err = io.open(t.path, 'w+'); if not f then return nil, err end
-+  rows, err = U3File:create(t.path..'.rows')
-+  if not rows then return nil, err end
-+  assert(f:write(T.MAGIC)); t._eofpos = #T.MAGIC
-+  t.f, t._rows, t.cache = f, rows, ds.WeakV{}
-+  t:schema(schema)
-+  return t
-+end
-+
-+local opRow = function(_rows, row, pos) rows[row] = pos end
-+local opReindex = Op.Kind:matcher{
-+  CREATE = function(rows,  _,   pos) rows[#rows+1] = pos end,
-+  UPDATE = function(rows, row, pos)  rows[row]     = pos end,
-+  DELETE = function(rows, row, _)    rows[row]     = 0   end,
-+  OTHER  = function() error'unreachable' end,
-+}
-+
-+local reindex = function(f, path) --> endpos, rows, meta
-+  local rowsPath = path..'.rows'
-+  local rows, err = assert(U3File:create(rowsPath))
-+  local pos = #DB.MAGIC; local len = f:seek'end'
-+  trace('reindex pos=%i len=%s', pos, len)
-+  f:seek'set'; assert(DB.MAGIC == f:read(#DB.MAGIC))
-+  local meta
-+  while pos < len do
-+    local op, _, rawdat, lensz = readEntryOp(f)
-+    if not op then break end -- incomplete entry, treat as EOF
-+    if op.other then
-+      if op.other.meta then meta = op.other.meta end
-+    else
-+      opReindex[op.kind](rows, op.row, pos)
-+    end
-+    pos = pos + lensz + #rawdat
-+  end
-+  assert(meta, 'OTHER.meta was never set')
-+  return pos, rows, meta
-+end
-+
-+local tryLoad = function(f, path) --> pos?, rows?, meta?
-+  local rowsPath, metaPath = path..'.rows', path..'.meta'
-+  if not ix.exists(rowsPath)              then return end
-+  if not ix.modifiedEq(f, rowsPath) then return end
-+  if not ix.modifiedEq(f, metaPath) then return end
-+  local rows = assert(U3File:load(rowsPath))
-+  local meta = assert(pod.deser(pth.read(metaPath), pod.table))
-+
-+  local pos; if #rows == 0 then pos = #DB.MAGIC
-+  else                          pos = rows[#rows] end
-+  f:seek('set', pos);
-+  local str, lensz = readEntryRaw(f); assert(str, lensz)
-+  return pos + lensz + #str, rows, meta
-+end
-+
-+DB.load = function(T, t)
-+  trace('civdb.DB load %q', t)
-+  local t = dbInit(t)
-+  if not ix.exists(t.path) then error('path not found: '..t.path) end
-+  local err;
-+  t.f, err = io.open(t.path, 'a+'); if not t.f then return nil, err end
-+  local pos, rows, meta = tryLoad(t.f, t.path)
-+  if not rows then pos, rows, meta = reindex(t.f, t.path) end
-+  if not rows then error("couldn't reload "..t.path..'.rows') end
-+
-+  t._schema = PKG_LOOKUP[assert(meta.schema, 'no schema in meta')]
-+  t._eofpos, t._rows, t._meta = pos, rows, meta
-+  return construct(T, t)
-+end
-+
-+DB.flush = function(db)
-+  local ok, err = db._rows:flush(); if not ok then return nil, err end
-+  ok, err = db.f:flush()           if not ok then return nil, err end
-+  local fs, err = ix.stat(db.f);   if not fs then return nil, err end
-+  ix.setModified(db._rows.f,       fs:modified())
-+  ix.setModified(db.path..'.meta', fs:modified())
-+end
-+
-+DB.close = function(db) db:flush(); db._rows:close(); db.f:close(); end
-+DB.nocache = function(db) db.cache = ds.Forget{} end
-+
-+-----------------------
-+-- Query API
-+
-+--- Return a iterator (row, val) of rows where
-+--- [$filterFn(fieldValue) == true]
-+DB.filterField = function(db, field, filterFn) --> iter (row, val)
-+  if not db._schema.__podders[field] then error('field not found: '..f) end
-+  local r, len = 0, #db
-+  return function()
-+    while r <= len do
-+      r = r + 1
-+      local v = db[r]; if v ~= nil then
-+        if filterFn(v[field]) then return r, v end
-+      end
-+    end
-+  end
-+end
-+
-+M.QOp = mty.enum'QOp' {
-+  EQ = 1,
-+}
-+local qopName = M.QOp.name
-+
-+--- A basic query request on a field, For example:
-+--- [{# lang=lua}
-+--- Query{field='name', op=QOp.Eq, 'rett'}]
-+--- ]#
-+---
-+--- ["Note: this is just data, to actually execute the query
-+---  call DB:query.]
-+M.Query = mty'Query' {
-+  'key [string]: field name (or defined key index) to query',
-+  'op [QOp]', kind=M.QOp.EQ,
-+}
-+local Query = M.Query
-+getmetatable(M.Query).__call = function(T, t)
-+  assert(type(t.key) == 'string' or type(t.key) == 'number',
-+         'must set field = str|int')
-+  t.op = qopName(t.op or 'EQ')
-+  return construct(T, t)
-+end
-+
-+local qMatcher = M.QOp:matcher {
-+  EQ = function(db, field, query)
-+    local eqv = query[1]
-+    return db:filterField(field, function(v) return v == eqv end)
-+  end,
-+}
-+
-+--- Query: return an iterator of (rowId, value) that matches the query.
-+---
-+--- [{h2}Why this is better than a [$for] loop]
-+--- Some fields (or keys composed of multiple fields) are indexed. If the query
-+--- is looking for a key with a relatively rare value, then it can be found in
-+--- O(1) time (for a hash index) instead of requiring a complete table scan.
-+DB.query = function(db, q) --> iter (rowId, value)
-+  if not getmt(q) then q = Query(q) end
-+  local k = q.key;
-+  local idx = db.idxs[k]; if idx then return idx(q) end
-+  if not db._schema.__podders[k] then error('db key not found: '..k) end
-+  return qMatcher[q.op](db, k, q)
-+end
-+
-+return M
-
---- /dev/null
-+++ lib/civdb/civdb/HashIdx.lua
-@@ -0,0 +1,26 @@
-+local mty = require'metaty'
-+
-+--- Robinhood hashing index for field (column)
-+local HashIdx = mty'civdb.HashIdx' {
-+  'db [civdb.DB]',
-+  'field [str]: the hashed field (key)',
-+}
-+
-+--- Return an iterator for [$civdb.Query], using hash index for [$op=EQ]
-+HashIdx.__call = function(idx, q) --> iter (row, val)
-+end
-+
-+--- handle a newly created value at row
-+HashIdx.create = function(idx, row, val)
-+end
-+
-+--- handle an updated value at row
-+HashIdx.update = function(idx, row, val)
-+end
-+
-+--- handle an deleted value at row
-+HashIdx.delete = function(idx, row)
-+end
-+
-+
-+return HashIdx
-
---- /dev/null
-+++ lib/civdb/test.lua
-@@ -0,0 +1,69 @@
-+
-+local mty = require'metaty'
-+local T = require'civtest'.Test
-+local M = require'civdb'
-+local ds = require'ds'
-+local It = require'ds.Iter'
-+local pod = require'pod'
-+
-+local char = string.char
-+
-+local DBF, IDX = '.out/file.civdb', '.out/rowfile.idx'
-+
-+-- test module
-+local Tm = mod'civdb.Tm'
-+Tm.V = pod(mty'V' {
-+  'i [int] #1: a int field',
-+  's [str] #2: a string field',
-+})
-+local V = Tm.V
-+
-+T.dbRaw = function()
-+  local db = assert(M.DB:new{path=DBF, schema=pod.builtin})
-+  db:nocache()
-+  T.eq(0, #db); db[1] = 'test1'
-+  db.f:seek('set', 0)
-+  T.binEq('test1', db[1])
-+  T.eq(db.path, DBF..'/db')
-+  T.eq({schema='pod.builtin'}, db._meta)
-+  T.eq({schema='pod.builtin'}, pod.load(DBF..'/db.meta'))
-+
-+  T.eq(1, #db); db[2] = 22
-+  T.eq({'test1', 22}, ds.icopy(db)); T.eq(nil, db[3])
-+  db:close()
-+
-+  -- reload
-+  local db = M.DB:load{path=DBF}; db:nocache()
-+  T.eq(pod.builtin, db._schema)
-+  T.eq({'test1', 22}, ds.icopy(db)); T.eq(nil, db[3])
-+  db[3] = 33
-+  T.eq({'test1', 22, 33}, ds.icopy(db)); T.eq(nil, db[4])
-+
-+  db[2] = 23
-+  T.eq({'test1', 23, 33}, ds.icopy(db)); T.eq(nil, db[4])
-+
-+  db[1] = nil
-+  T.eq({nil    , 23, 33}, ds.icopy(db)); T.eq(nil, db[4])
-+  db:close()
-+
-+  local db = M.DB:load{path=DBF}; db:nocache()
-+  T.eq({nil    , 23, 33}, ds.icopy(db)); T.eq(nil, db[4])
-+  db:close()
-+end
-+
-+-- test query using non-indexed fields
-+T.queryScan = function()
-+  local db = assert(M.DB:new{path=DBF, schema=V})
-+  local rows = {V{i=11}, V{i=22}, V{i=33, s='third'}, V{i=-1}, V{s='last'}}
-+  ds.extend(db, ds.deepcopy(rows))
-+  It:ofList(rows):assertEq(It:ofList(db))
-+
-+  It:ofUnpacked{ {2, V{i=22}}, }
-+    :assertEq(It{db:query{key='i', 22}})
-+
-+  It:ofUnpacked{ {5, V{s='last'}}, }
-+    :assertEq(It{db:query{key='i', nil}})
-+
-+  It:ofUnpacked{ {1, V{i=11}}, {2, V{i=22}}, {4, V{i=-1}}, }
-+    :assertEq(It{db:query{key='s', nil}})
-+end
-
---- /dev/null
 +++ lib/civix/.gitignore
 @@ -0,0 +1,3 @@
 +**/*.so
@@ -8348,7 +8022,7 @@ initial commit
 
 --- /dev/null
 +++ lib/civix/Makefile
-@@ -0,0 +1,34 @@
+@@ -0,0 +1,38 @@
 +# Copy/pastable Makefile for Lua C sources.
 +#
 +# Note: `luarocks make` puts the shared library files next to the C file,
@@ -8360,14 +8034,18 @@ initial commit
 +OUT   = $(NAME)/lib
 +LUA_VERSION = lua
 +
-+UNAME := $(shell uname)
++UNAME != uname
 +build:  $(UNAME)
++NetBSD: $(OUT).so
 +Linux:  $(OUT).so
 +Darwin: $(OUT).so
 +# Windows: $(OUT).dll
 +
 +$(OUT).so: $(FILES)
 +	make Build$(UNAME)
++
++BuildNetBSD:
++	$(CC) -DBSD $(FILES) -fPIC -llua -I/usr/pkg/include/$(LUA_VERSION) -shared -o $(OUT).so
 +
 +BuildLinux: $(FILES)
 +	# vcmd:       $(_VCMD)
@@ -8386,7 +8064,7 @@ initial commit
 
 --- /dev/null
 +++ lib/civix/PKG.lua
-@@ -0,0 +1,22 @@
+@@ -0,0 +1,23 @@
 +name     = 'civix'
 +summary  = "Unix sys library"
 +homepage = "https://lua.civboot.org#Package_civix"
@@ -8397,6 +8075,7 @@ initial commit
 +srcs = {
 +  'civix.lua',
 +  ['civix.lib'] = 'civix/lib.c',
++  'civix/testing.lua',
 +}
 +libs = {
 +  ['civix.lib'] = 'civix/lib.so',
@@ -8855,7 +8534,7 @@ initial commit
 +    _fnomaybe(sh.stderr, fd.sys.STDERR_FILENO),
 +    sh.cwd
 +  )
-+  sh._sh = ex
++  sh._sh = assert(ex, 'INTERNAL: lib.sh returned nil')
 +  if _r then r:_setfileno(_r); r:toNonblock() else r = nil end
 +  if _w then w:_setfileno(_w); w:toNonblock() else w = nil end
 +  if _l then l:_setfileno(_l); l:toNonblock() else l = nil end
@@ -8960,12 +8639,13 @@ initial commit
 
 --- /dev/null
 +++ lib/civix/civix/lib.c
-@@ -0,0 +1,365 @@
+@@ -0,0 +1,375 @@
 +#include <stdlib.h>
 +
 +#include <string.h>
 +#include <stdbool.h>
 +#include <errno.h>
++#include <assert.h>
 +
 +#include <lua.h>
 +#include <lualib.h>
@@ -8978,6 +8658,11 @@ initial commit
 +#include <signal.h>
 +#include <sys/wait.h>
 +#include <sys/stat.h>
++
++#ifdef BSD
++extern char** environ;
++static void clearenv() { *environ = NULL; }
++#endif
 +
 +// ---------------------
 +// -- Utilities
@@ -9145,7 +8830,6 @@ initial commit
 +// stat -> (size)
 +static int l_stat_size(LS *L) {
 +  STAT* st = *tolstat(L);
-+  printf("!! stat_size %i\n", st->st_size);
 +  lua_pushinteger(L, st->st_size); return 1;
 +}
 +
@@ -9167,7 +8851,7 @@ initial commit
 +
 +struct sh {
 +  pid_t pid; char** env; // note: env only set if needs freeing
-+  int rc;
++  int rc; // return code of wait
 +};
 +
 +struct sh* sh_wait(struct sh* sh, int flags) {
@@ -9219,8 +8903,10 @@ initial commit
 +  if(!lua_isnoneornil(L, 3)) { env = checkstringarray(L, 3, &_unused); }
 +  bool createdChR = false, createdChW = false, createdChL = false;
 +
++  int topi = lua_gettop(L); // FIXME: remove
 +  struct sh* sh = (struct sh*)lua_newuserdata(L, sizeof(struct sh));
-+  sh->pid = 0; sh->env = env;
++  assert(!lua_isnil(L, -1));
++  *sh = (struct sh) { .env = env };
 +  luaL_setmetatable(L, SH_META);
 +
 +  // ch_r=child-read, pr_w=parent-write, etc
@@ -9257,7 +8943,10 @@ initial commit
 +      clearenv(); while(*env) { putenv(*env); env += 1; }
 +    }
 +    if(cwd) chdir(cwd);
-+    return execvp(command, argv);
++    execvp(command, argv);
++    if(errno) fprintf(stderr, "execvp\"%s\"(%s [%i])\n",
++          command, SERR, errno);
++    return 1;
 +  } // else parent
 +  sh->pid = pid;
 +  // only return if we created the fileno. Also, close child-side pipes
@@ -9328,18 +9017,54 @@ initial commit
 +}
 
 --- /dev/null
++++ lib/civix/civix/testing.lua
+@@ -0,0 +1,33 @@
++local G = G or _G
++
++--- test runners and helpers for civix
++local M = G.mod and G.mod'civix.testing' or {}
++
++local fmt = require'fmt'
++local lap = require'lap'
++local ix  = require'civix'
++local fd  = require'fd'
++
++--- Typically an entire test file is wrapped in a function,
++--- then passed to this -- which runs all tests sequentially
++--- inside the lap environment.
++---
++--- ["This does not print test names/etc. Use civtest or
++---   equivalent for that.
++--- ]
++M.runAsyncTest = function(fn)
++  assert(not G.LAP_ASYNC, 'already in async mode')
++  local lr = ix.Lap()
++  local _, errors = lr:run{fd.ioAsync, fn}
++  lap.reset()
++  fd.ioStd()
++  if errors then error(
++    'testLapEnv found errors:\n'..fmt(errors)
++  )end
++  if not lr:isDone() then
++    error'testLapEnv had no errors but is not done!'
++  end
++end
++
++return M
++
+
+--- /dev/null
 +++ lib/civix/test.lua
-@@ -0,0 +1,178 @@
+@@ -0,0 +1,196 @@
 +METATY_CHECK = true
 +
 +local mty = require'metaty'
 +local ds = require'ds'
 +local pth = require'ds.path'
 +local Iter = require'ds.Iter'
-+local Tm = require'civtest'
-+local T = Tm.Test
-+local assertEq, assertErrorPat; ds.auto'civtest'
++local T = require'civtest'
 +local fd = require'fd'
++local ixt = require'civix.testing'
 +
 +local M  = require'civix'
 +local lib = require'civix.lib'
@@ -9347,12 +9072,14 @@ initial commit
 +local O = '.out/'
 +local push = table.insert
 +
++local fin
++local tests = function()
 +T.simple = function()
 +  local sh, o = M.sh
 +  T.eq('/tmp\n', sh{'pwd', CWD='/tmp'})
 +
 +  T.eq('/tmp thisIsFOO\n',
-+    sh{'/usr/bin/sh', '-c', 'echo $PWD $FOO',
++    sh{'sh', '-c', 'echo $PWD $FOO',
 +       CWD='/tmp', ENV={'FOO=thisIsFOO'}})
 +
 +  local o, e, sh = M.sh{'false', rc=true}
@@ -9361,7 +9088,8 @@ initial commit
 +
 +-- TODO: this behaves slighlty differently for the different file
 +--       descriptor libraries!
-+Tm.lapTest('sh', function()
++-- FIXME: re-enable async test
++T.testSh = function()
 +  local sh, o = M.sh
 +
 +  T.eq('',           sh'true')
@@ -9369,12 +9097,6 @@ initial commit
 +  T.eq('from stdin', sh{stdin='from stdin', 'cat'})
 +  T.eq('foo --abc=ya --aa=bar --bb=42\n',
 +    sh{'echo', 'foo', '--abc=ya', aa='bar', bb=42})
-+
-+  assertErrorPat('Command failed with rc=1', function() sh'false' end)
-+  assertErrorPat('Command failed with rc=', function()
-+    sh{'commandNotExist', 'blah'}
-+  end)
-+  -- error'FIXME: the above actually FAILED but test doesn't fail...'
 +
 +  local path = '.out/echo.test'
 +  local f = io.open(path, 'w+')
@@ -9392,9 +9114,19 @@ initial commit
 +  out, err, s = sh{'sh', '-c', "echo 'on STDERR' >&2 ", stdout=false, stderr=true}
 +  T.eq(nil, out); T.eq('on STDERR\n', err)
 +  collectgarbage()
-+end)
++end
 +
-+Tm.lapTest('time', function()
++
++T.sh_fail = function()
++  T.throws('Command failed with rc=1', function()
++    M.sh'false'
++  end)
++  T.throws('Command failed with rc=1', function()
++    M.sh{'commandNotExist', 'blah'}
++  end)
++end
++
++T.time = function()
 +  local period, e1 = ds.Duration(0.001), M.epoch()
 +  for i=1,10 do
 +    M.sleep(period)
@@ -9404,7 +9136,7 @@ initial commit
 +  end
 +  M.sleep(-2.3)
 +  local m = M.mono(); M.sleep(0.001); assert(m < M.mono())
-+end)
++end
 +
 +local TEST_TREE = {
 +  ['a.txt'] = 'for civix a test',
@@ -9427,32 +9159,7 @@ initial commit
 +  T.eq(pth.read(O..'cp.txt'), pth.read(O..'cp.2.txt'))
 +end
 +
-+Tm.test('fd-perf', function()
-+  local Kib = string.rep('123456789ABCDEF\n', 64)
-+  local data = string.rep(Kib, 500)
-+  local count, run = 0, true
-+  local res
-+  local O = '.out/'
-+  M.Lap{
-+    -- make sleep insta-ready instead (open/close use it)
-+    sleepFn = function(cor) LAP_READY[cor] = 'sleep' end,
-+  }:run{
-+    function() while run do
-+      count = count + 1; coroutine.yield(true)
-+    end end,
-+    function()
-+      local f = fd.openFDT(O..'perf.bin', 'w+')
-+      f:write(data); f:seek'set'; res = f:read'a'
-+      f:close()
-+      run = false
-+    end,
-+  }
-+
-+  assert(data == res)
-+  -- assert(count > 50, tostring(count))
-+end)
-+
-+Tm.test('walk', function()
++T.walk = function()
 +  local d = mkTestTree()
 +  local paths, types, depths = {}, {}, {}
 +  local w = M.Walk{d}; for path, ty in w do
@@ -9480,7 +9187,7 @@ initial commit
 +    {".out/civix/", ".out/civix/a.txt"},
 +    Iter{w}:listen(see):filterK(skipB):keysTo())
 +  T.eq(expect, saw)
-+end)
++end
 +
 +T.mkRmTree = function()
 +  local d = mkTestTree()
@@ -9508,6 +9215,43 @@ initial commit
 +  pth.write(path, 'hello\n')
 +  T.eq(6, M.stat(path):size())
 +end
++fin = true; end ---------------- end tests()
++
++fd.ioSync();
++fin = false; tests(); assert(fin)
++
++T.SUBNAME = '[ioAsync]'
++fin=false; ixt.runAsyncTest(tests); assert(fin)
++
++T.SUBNAME = ''
++
++-- FIXME: consider re-working and enabling
++-- T.fd_perf = function()
++--   local Kib = string.rep('123456789ABCDEF\n', 64)
++--   local data = string.rep(Kib, 500)
++--   local count, run = 0, true
++--   local res
++--   local O = '.out/'
++--   M.Lap{
++--     -- make sleep insta-ready instead (open/close use it)
++--     sleepFn = function(cor) LAP_READY[cor] = 'sleep' end,
++--   }:run{
++--     function() while run do
++--       count = count + 1; coroutine.yield(true)
++--     end end,
++--     function()
++--       local f = fd.openFDT(O..'perf.bin', 'w+')
++--       f:write(data); f:seek'set'; res = f:read'a'
++--       f:close()
++--       run = false
++--     end,
++--   }
++-- 
++--   assert(data == res)
++--   -- assert(count > 50, tostring(count))
++-- end
++
++fd.ioStd()
 
 --- /dev/null
 +++ lib/civtest/PKG.lua
@@ -9537,11 +9281,12 @@ initial commit
 
 --- /dev/null
 +++ lib/civtest/civtest.lua
-@@ -0,0 +1,187 @@
+@@ -0,0 +1,156 @@
 +local G = G or _G
 +
 +--- module for writing simple tests
-+local M = G.mod and G.mod'civtest' or {}
++local M = G.mod and G.mod'civtest' or setmetatable({}, {})
++M.SUBNAME = ''
 +
 +local mty = require'metaty'
 +local fmt = require'fmt'
@@ -9551,6 +9296,7 @@ initial commit
 +local lines = require'lines'
 +local ix = require'civix'
 +
++local getmt = getmetatable
 +local push, sfmt = table.insert, string.format
 +local function exit(rc) io.stderr:flush(); os.exit(rc) end
 +
@@ -9566,8 +9312,25 @@ initial commit
 +  error(sfmt('Failed %s', name), 2)
 +end
 +
-+local showDiff = function(a, b)
-+  local f = io.fmt
++--- Run the test, printing information to the terminal.
++---
++--- This function computes name=[$name..civtest.SUBNAME]
++--- and sets civtest.NAME to the new name, which can be
++--- used in the test.
++---
++--- ["Note: normally this is called when the user sets
++---   a key to the civtest module, which has __newindex()
++---   overriden to call this function.
++--- ]
++M.runTest = function(name, fn, path)
++  name = name..M.SUBNAME
++  rawset(M, 'NAME', name);
++  io.fmt:styled('h2', sfmt('## Test %-32s', name), ' ')
++  io.fmt:styled('path', pth.nice(path), '\n')
++  return fn()
++end
++
++M.showDiff = function(f, a, b)
 +  f:styled('error', '\n!! RESULT:', '\n');   f(b)
 +  if mty.ty(a) ~= mty.ty(b) then
 +    f:styled('error', '\n!! TYPES:', ' ',
@@ -9581,24 +9344,76 @@ initial commit
 +    errordiff(a, b)
 +  end
 +end
++local showDiff = M.showDiff
 +
-+M.Test = (mty'Test'{})
-+M.Test.eq = function(a, b)
++--- Assert that [$a] equals [$b] (according to [<#metaty.eq>].
++M.eq = function(a, b)
 +  if mty.eq(a, b) then return end
-+  showDiff(a, b); fail("Test.eq")
++  showDiff(io.fmt, a, b); fail'Test.eq'
 +end
 +
-+M.Test.exists = function(p)
-+  if not require'civix'.exists(p) then error(
-+    'does not exist: '..p
++-- binary equal
++M.binEq = function(e, r)
++  assert(type(e) == 'string', 'expect must be string')
++  assert(type(r) == 'string', 'result must be string')
++  if e == r then return end
++  if #e ~= #r then io.fmt:styled(
++    'notify', sfmt('binary lengths: %s ~= %s\b', #e, #r)
++  )end
++  errordiff(fbin(e), fbin(r))
++  fail'Test.binEq'
++end
++
++--- assert [$subj:find(pat)]
++M.matches = function(pat, subj) --> !?error
++  if subj:find(pat) then return end
++  local f = io.fmt
++  f:styled('error', '\n!! RESULT:', '\n');   f(subj)
++  f:styled('error', '\n!! Did not match:', sfmt('%q\n', pat))
++  f:styled('error', '!! Failed Test.matches:', ' ')
++  f:styled('path', pth.nice(ds.srcloc(1)), '\n')
++  fail'matches'
++end
++
++--- assert [$subj:find(pat, 1, true)] (plain find)
++M.contains = function(plain, subj) --> !?error
++  if subj:find(plain, 1, true) then return end
++  io.fmt:styled('error', '\n!! RESULT:', '\n');   f(b)
++  io.fmt:styled('error', '\n!! Did not contain:', sfmt('%q\n', plain))
++  io.fmt:styled('error', '!! Failed Test.contains:', ' ')
++  io.fmt:styled('path', pth.nice(ds.srcloc(1)), '\n')
++  fail'contains'
++end
++
++--- assert [$fn()] fails and the [$contains] is in the message.
++M.throws = function(contains, fn) --> ds.Error
++  local ok, err = ds.try(fn)
++  if ok then
++    f:styled('error', '!! Unexpected: did not receive an error')
++    fail'Test.throws (no error)'
++  end
++  if err.msg:find(contains, 1, true) then return err end
++  local f = io.fmt
++  f:styled('error', '\n!! Unexpected Result:', '\n');
++  f:styled('error', 'Actual error:', '\n')
++  f:write(err.msg)
++  f:styled('error', '\n# end actual error', '\n')
++  showDiff(io.fmt, contains, err.msg)
++  fail'Test.throws (not expected)'
++end
++
++--- Assert that the path exists.
++M.exists = function(path)
++  if not require'civix'.exists(path) then error(
++    'does not exist: '..path
 +  )end
 +end
 +
 +--- Assert the contents at the two paths are equal
-+M.Test.pathEq = function(a, b)
++M.pathEq = function(a, b)
 +  local at, bt = pth.read(a), pth.read(b)
 +  if at == bt then return end
-+  showDiff(at, bt);
++  showDiff(io.fmt, at, bt);
 +  io.fmt:styled('error', sfmt('Path expected: %s\n       result: %s',
 +    a, b), '\n')
 +  fail'Test.pathEq'
@@ -9607,133 +9422,30 @@ initial commit
 +--- Assert that path matches expect. Expect can be of type:
 +--- * string: asserts the file contents match.
 +--- * table: recursively assert the subtree contents exist.
-+M.Test.path = function(path, expect)
-+  M.Test.exists(path)
++M.path = function(path, expect)
++  M.exists(path)
 +  if type(expect) == 'string' then
 +    local txt = pth.read(path)
 +    if expect == txt then return end
 +    io.fmt:styled('error', '!! Path '..path, '\n')
-+    showDiff(expect, txt); fail'Test.tree'
++    showDiff(io.fmt, expect, txt); fail'Test.tree'
 +  end
 +  if ix.pathtype(path) ~= ix.DIR then error(path..' is not a dir') end
-+  for k, v in pairs(expect) do M.Test.path(pth.concat{path, k}, v) end
++  for k, v in pairs(expect) do M.path(pth.concat{path, k}, v) end
 +end
 +
-+-- binary equal
-+M.Test.binEq = function(e, r)
-+  assert(type(e) == 'string', 'expect must be string')
-+  assert(type(r) == 'string', 'result must be string')
-+  if e == r then return end
-+  if #e ~= #r then io.fmt:styled(
-+    'notify', sfmt('binary lengths: %s ~= %s\b', #e, #r)
-+  )end
-+  errordiff(fbin(e), fbin(r))
-+  fail("Test.binEq")
++getmetatable(M).__newindex = function(m, name, fn)
++  return m.runTest(name, fn, select(2, mty.fninfo(fn)))
 +end
-+
-+--- assert [$subj:find(pat)]
-+M.Test.matches = function(pat, subj) --> !?error
-+  if subj:find(pat) then return end
-+  f:styled('error', '\n!! RESULT:', '\n');   f(b)
-+  f:styled('error', '\n!! Did not match:', sfmt('%q\n', pat))
-+  f:styled('error', '!! Failed Test.matches:', ' ')
-+  f:styled('path', pth.nice(ds.srcloc(1)), '\n')
-+  exit(1)
-+end
-+--- assert [$subj:find(pat, 1, true)] (plain find)
-+M.Test.contains = function(plain, subj) --> !?error
-+  if subj:find(plain, 1, true) then return end
-+  io.fmt:styled('error', '\n!! RESULT:', '\n');   f(b)
-+  io.fmt:styled('error', '\n!! Did not contain:', sfmt('%q\n', plain))
-+  io.fmt:styled('error', '!! Failed Test.contains:', ' ')
-+  io.fmt:styled('path', pth.nice(ds.srcloc(1)), '\n')
-+  exit(1)
-+end
-+--- assert [$fn()] fails and the [$contains] is in the message.
-+M.Test.throws = function(contains, fn) --> ds.Error
-+  local ok, err = ds.try(fn)
-+  if not ok and err.msg:find(contains, 1, true) then return err end
-+  local f = io.fmt
-+  f:styled('error', '\n!! Unexpected Result:', '\n');
-+  if ok then f:styled('notice', '<no error>') else f(err) end
-+  f:styled('error', '\n!! Expected error to contain:',
-+           sfmt(' %q\n', contains))
-+  f:styled('error', '!! Failed Test.throws:', ' ')
-+  f:styled('path', pth.nice(ds.srcloc(1)), '\n')
-+  exit(1)
-+end
-+getmetatable(M.Test).__newindex = function(s, name, fn)
-+  assert(not rawget(M.Test, name), name..' is a Test method')
-+  io.fmt:styled('h2', sfmt('## Test %-32s', name), ' ')
-+  io.fmt:styled('path', pth.nice(ds.srcloc(1)), '\n')
-+  fn(s)
-+end
-+
-+
-+-----------------------
-+-- DEPRECATED
-+
-+--- simplest assertEq
-+M.assertEq = function(expect, result)
-+  if mty.eq(expect, result) then return end
-+  io.stderr:write('\n!! EXPECTED:\n', fmt(expect), '\n')
-+  io.stderr:write('\n!! RESULT:\n',   fmt(result), '\n')
-+  io.stderr:write('!! Failed assertEq: '..pth.nice(ds.srcloc(1)), '\n')
-+  exit(1)
-+end
-+
-+M.assertErrorPat = function(errPat, fn, plain)
-+  local ok, err = pcall(fn)
-+  if ok then error(sfmt(
-+    'Did not recieve expected error.\n'
-+  ..'! Expected errPat %q\n! Got result[1]: %s',
-+    errPat, fmt(err)
-+  ))end
-+  if not err:find(errPat, 1, plain) then error(sfmt(
-+    '! Did not recieve expected error.\n'
-+  ..'! Expected errPat %q\n!### Got error:\n%q', errPat, err
-+  ))end
-+end
-+
-+M.assertMatch = function(expectPat, result)
-+  if not result:match(expectPat) then
-+    fmt.errorf('Does not match pattern:\nPattern: %q\n Result:  %s',
-+           expectPat, result)
-+  end
-+end
-+
-+M.test = function(name, fn)
-+  print('# Test', name)
-+  fn()
-+  collectgarbage()
-+end
-+
-+--- Runs until yields non-truthy. See lib/lap/README.md
-+M.asyncTest = function(name, fn)
-+  local lap = require'lap'
-+  local civix = require'civix'
-+  local Lap = civix.Lap()
-+  print('# Test', name, "(async)")
-+  local _, errors = Lap:run{fn}
-+  collectgarbage()
-+  if errors then error(fmt(errors)) end
-+end
-+
-+M.lapTest = function(name, fn)
-+  M.test(name, fn)
-+  M.asyncTest(name, fn)
-+end
-+
 +return M
 
 --- /dev/null
 +++ lib/civtest/test.lua
-@@ -0,0 +1,25 @@
+@@ -0,0 +1,20 @@
 +
 +local mty = require'metaty'
 +local ds  = require'ds'
-+local CT = require'civtest'
-+local T = CT.Test
++local T = require'civtest'
 +
 +T.civtest = function()
 +  T.eq(1, 1)
@@ -9750,10 +9462,6 @@ initial commit
 +  end)
 +  assert(G.someGlobal == nil)
 +end
-+
-+CT.asyncTest('foo', function()
-+  assert(true)
-+end)
 
 --- /dev/null
 +++ lib/diff.lua
@@ -9852,7 +9560,7 @@ initial commit
 
 --- /dev/null
 +++ lib/ds/ds.lua
-@@ -0,0 +1,1161 @@
+@@ -0,0 +1,1160 @@
 +-- ds: data structures and algorithms
 +
 +local M = mod and mod'ds' or {}
@@ -10070,7 +9778,7 @@ initial commit
 +---   this is
 +---     a string.
 +--- ]]
-+--- assertEq('this is\n  a string.', mystr)
++--- T.eq('this is\n  a string.', mystr)
 +--- ]##
 +M.simplestr = function(s)
 +  local i, out, iden, spcs = 1, {}, nil
@@ -10091,12 +9799,6 @@ initial commit
 +---------------------
 +-- Table Functions
 +M.isEmpty = function(t) return t == nil or next(t) == nil end
-+
-+--- push the [$fmt:format(...)] to the table
-+---
-+--- Example: [$pushfmt(t, 'a=%s b=%s', a, b)]
-+M.pushfmt = function(t, fmt, ...) push(t, sfmt(fmt, ...)) end
-+local pushfmt = M.pushfmt
 +
 +--- the full length of all pairs
 +--- ["WARNING: very slow, requires iterating the whole table]
@@ -10397,7 +10099,11 @@ initial commit
 +-- Untyped Functions
 +
 +--- Copy list-elements only
-+M.icopy = function(t) return move(t, 1, #t, 1, {}) end --> list
++M.icopy = function(t) --> list
++  local meth = getmethod(t, '__icopy')
++  if meth then return meth(t) end
++  return move(t, 1, #t, 1, {})
++end
 +
 +--- Copy and update full table
 +M.copy = function(t, update) --> new t
@@ -10507,8 +10213,8 @@ initial commit
 +  return Slc{si=a.si, ei=max(a.ei, b.ei)}
 +end
 +
-+M.Slc.__tostring = function(s) --> string
-+  return sfmt('Slc[%s:%s]', s.si, s.ei)
++M.Slc.__fmt = function(s, fmt) --> string
++  fmt:write(sfmt('Slc[%s:%s]', s.si, s.ei))
 +end
 +
 +---------------------
@@ -10673,16 +10379,16 @@ initial commit
 +end
 +
 +M.Set.__fmt = function(self, f) --> nil
-+  push(f, 'Set'); push(f, f.tableStart);
++  f:write('Set', f.tableStart)
 +  local keys = {}; for k in ipairs(self) do push(keys, k) end
 +  sort(keys)
 +  if #keys > 1 then f:level(1) end
 +  for i, k in ipairs(keys) do
-+    f:fmt(k)
-+    if i < #keys then push(f, f.indexEnd) end
++    f(k)
++    if i < #keys then f:write(f.indexEnd) end
 +  end
 +  if #keys > 1 then f:level(-1) end
-+  push(f, f.tableEnd)
++  f:write(f.tableEnd)
 +end
 +
 +M.Set.__eq = function(self, t) --> bool
@@ -10810,18 +10516,19 @@ initial commit
 +---
 +--- Note that [$pairs()] will return BOTH directions (in an unspecified order)
 +M.BiMap = mty'BiMap'{}
++M.BiMap.__fields   = nil
++M.BiMap.__fmt      = nil
++M.BiMap.__tostring = nil
 +
 +getmetatable(M.BiMap).__call = function(ty_, t)
 +  local rev = {}; for k, v in pairs(t) do rev[v] = k end
 +  for k, v in pairs(rev) do t[k] = v end
 +  return setmetatable(t, ty_)
 +end
-+M.BiMap.__fields = nil
 +M.BiMap.__newindex = function(t, k, v)
 +  rawset(t, k, v); rawset(t, v, k)
 +end
 +getmetatable(M.BiMap).__index = nil
-+M.BiMap.__fmt = nil
 +M.BiMap.remove = function(t, k) --> v
 +  local v = t[k]; t[k] = nil; t[v] = nil; return v
 +end
@@ -10925,17 +10632,17 @@ initial commit
 +M.Error = mty'Error' {
 +  'msg [string]', 'traceback [table]', 'cause [Error]',
 +}
-+M.Error.__fmt = function(e, fmt)
-+  push(fmt, 'ERROR: '); push(fmt, e.msg)
++M.Error.__fmt = function(e, f)
++  f:write('ERROR: ', e.msg)
 +  if e.traceback then
-+    push(fmt, '\ntraceback:\n')
++    f:write'\ntraceback:\n'
 +    for _, l in ipairs(e.traceback) do
-+      push(fmt, '  '); push(fmt, l); push(fmt, '\n')
++      f:write('  ', l, '\n')
 +    end
 +  end
 +  if e.cause then
-+    push(fmt, '\nCaused by: ');
-+    fmt(e.cause); push(fmt, '\n')
++    f:write'\nCaused by: '
++    f(e.cause); f:write'\n'
 +  end
 +end
 +M.Error.__tostring = function(e) return fmt(e) end
@@ -11017,7 +10724,7 @@ initial commit
 
 --- /dev/null
 +++ lib/ds/ds/Grid.lua
-@@ -0,0 +1,59 @@
+@@ -0,0 +1,57 @@
 +-- text grid type
 +local mty = require'metaty'
 +local ds = require'ds'
@@ -11069,11 +10776,9 @@ initial commit
 +  end
 +end
 +
-+G.__fmt = function(g, fmt)
-+  local h = g.h; for l=1,h-1 do
-+    push(fmt, concat(g[l])); push(fmt, '\n')
-+  end
-+  push(fmt, concat(g[h]))
++G.__fmt = function(g, f)
++  local h = g.h; for l=1,h-1 do f:write(concat(g[l]), '\n') end
++  f:write(concat(g[h]))
 +end
 +
 +return G
@@ -11087,7 +10792,7 @@ initial commit
 +--- [{## lang=lua}
 +--- isNumber = function(v) return type(v) == 'number' end
 +--- t = {4, 5, 'six', 7}
-+--- assertEq(
++--- T.eq(
 +---   {'4', '5', '7'},
 +---   Iter:ofList(t)       -- iterate over ipairs(t)
 +---     :filterV(isNumber) -- only numbers
@@ -11371,14 +11076,14 @@ initial commit
 +Iter.assertEq = function(it1, it2)
 +  assert(mty.ty(it1) == Iter, 'it1 is not Iter')
 +  assert(mty.ty(it2) == Iter, 'it2 is not Iter')
-+  local i, T = 0, require'civtest'.Test
++  local i, T = 0, require'civtest'
 +  while true do
 +    i = i + 1
 +    local r1 = {it1()}
 +    local r2 = {it2()}
 +    if not mty.eq(r1, r2) then
 +      io.fmt:styled('error', 'Result differs at index '..i, '\n')
-+      T.eq(r1, r2); error'unreachable'
++      assertEq(r1, r2); error'unreachable'
 +    end
 +    if rawequal(r1[1], nil) then return end
 +  end
@@ -11504,13 +11209,13 @@ initial commit
 +LL.__call = function(ll) return ll.r end --> ll.r (use with `for`)
 +LL.__pairs  = ds.nosupport
 +LL.__ipairs = ds.nosupport
-+LL.__fmt = function(ll, fmt)
-+  push(fmt, 'LL{')
++LL.__fmt = function(ll, f)
++  f:write'LL{'
 +  while true do
-+    fmt(ll.v); ll = ll.r
-+    if ll then push(fmt, ' -> ') else break end
++    f(ll.v); ll = ll.r
++    if ll then f:write' -> ' else break end
 +  end
-+  push(fmt, '}')
++  f:write'}'
 +end
 +
 +return LL
@@ -11713,10 +11418,10 @@ initial commit
 +function M.logFn(lvl, loc, fmt, ...)
 +  if LOGLEVEL < lvl then return end
 +  local f, lasti, i, args, nargs = io.fmt, 1, 0, {...}, select('#', ...)
-+  push(f, sfmt('%s %s %s: ', SHORT[lvl], M.time(), loc)); f:flush()
++  f:write(sfmt('%s %s %s: ', SHORT[lvl], M.time(), loc)); f:flush()
 +  f:level(1)
 +  local nargs, i = select('#', ...), f:format(fmt, ...)
-+  if i == (nargs - 1) then push(f, ' '); f(args[i + 1]) -- data
++  if i == (nargs - 1) then f:write' '; f(args[i + 1]) -- data
 +  elseif i ~= nargs then error('invalid #args: '..nargs..' %fmts='..i) end
 +  f:level(-1); f:write'\n'; f:flush()
 +end
@@ -11980,7 +11685,7 @@ initial commit
 
 --- /dev/null
 +++ lib/ds/test.lua
-@@ -0,0 +1,795 @@
+@@ -0,0 +1,792 @@
 +METATY_CHECK = true
 +local function testloc()  return require'ds'.srcloc() end
 +local function testshort() return require'ds'.shortloc() end
@@ -11998,8 +11703,7 @@ initial commit
 +local lines = require'lines'
 +local testing = require'lines.testing'
 +
-+local test, assertEq, assertMatch, assertErrorPat; M.auto'civtest'
-+local T = require'civtest'.Test
++local T = require'civtest'
 +
 +local bound, isWithin, sort2, decAbs
 +local indexOf, copy, deepcopy
@@ -12020,20 +11724,18 @@ initial commit
 +-- ds.lua
 +
 +T.loc = function()
-+  assertEq('lib/ds/test.lua:4', loc1)
-+  assertEq('ds/test.lua:4', loc2)
++  T.eq('lib/ds/test.lua:4', loc1)
++  T.eq('ds/test.lua:4', loc2)
 +
-+  assertEq(   'lib/ds/',          M.srcdir())
-+  assertMatch('.*/lib/civtest/$', M.srcdir(1))
++  T.eq(   'lib/ds/',          M.srcdir())
 +  local function fn()
-+     assertEq(   'lib/ds/',          M.srcdir())
-+     assertEq(   'lib/ds/',          M.srcdir(1))
-+     assertMatch('.*/lib/civtest/$', M.srcdir(2))
++     T.eq(   'lib/ds/',          M.srcdir())
++     T.eq(   'lib/ds/',          M.srcdir(1))
 +  end; fn()
 +end
 +
 +T.simplestr = function()
-+  assertEq('a', [[
++  T.eq('a', [[
 +a]])
 +  T.eq('this is\n  a simple str.', s[[
 +    this is
@@ -12054,56 +11756,56 @@ initial commit
 +
 +T.bool_and_none = function()
 +  local none = assert(M.none)
-+  assertEq(false, M.bool())
-+  assertEq(false, M.bool(false))
-+  assertEq(false, M.bool(none))
-+  assertEq(true, M.bool(true))
-+  assertEq(true, M.bool(''))
-+  assertEq(true, M.bool(0))
-+  assertEq(true, M.bool({}))
++  T.eq(false, M.bool())
++  T.eq(false, M.bool(false))
++  T.eq(false, M.bool(none))
++  T.eq(true, M.bool(true))
++  T.eq(true, M.bool(''))
++  T.eq(true, M.bool(0))
++  T.eq(true, M.bool({}))
 +  assert(none) -- truthy, use ds.bool for falsy
 +  assert(rawequal(none, none))
 +  assert(none == none)
-+  assertEq(none, none)
++  T.eq(none, none)
 +  assert(none ~= {})
 +  assert(not mty.eq(none, {}))
-+  assertEq('none', getmetatable(none))
-+  assertEq('none', mty.ty(none))
-+  assertEq('none', fmt(none))
++  T.eq('none', getmetatable(none))
++  T.eq('none', mty.ty(none))
++  T.eq('none', fmt(none))
 +  local err = 'invalid operation on sentinel'
-+  assertErrorPat(err, function() none.foo = 3 end)
-+  assertErrorPat(err, function() return #none end)
++  T.throws(err, function() none.foo = 3 end)
++  T.throws(err, function() return #none end)
 +end
 +
 +T.imm = function()
-+  assertEq({}, M.empty)
-+  assertEq(nil, next(M.empty))
-+  assertEq(0,  #M.empty)
-+  assertEq('table', getmetatable(M.empty))
++  T.eq({}, M.empty)
++  T.eq(nil, next(M.empty))
++  T.eq(0,  #M.empty)
++  T.eq('table', getmetatable(M.empty))
 +
 +  local t = M.Imm{1, 2, v=3}
-+  assertEq(1, t[1])
-+  assertEq(3, t.v)
-+  assertEq('table', getmetatable(t))
++  T.eq(1, t[1])
++  T.eq(3, t.v)
++  T.eq('table', getmetatable(t))
 +  assert('table', debug.getmetatable(t).__metatable)
-+  assertEq('table', mty.ty(t))
-+  assertErrorPat('cannot modify Imm', function() t.b = 8 end)
-+  assertErrorPat('cannot modify Imm', function() t.v = 8 end)
-+  assertEq('<!imm data!>', next(t))
++  T.eq('table', mty.ty(t))
++  T.throws('cannot modify Imm', function() t.b = 8 end)
++  T.throws('cannot modify Imm', function() t.v = 8 end)
++  T.eq('<!imm data!>', next(t))
 +  local j = {1, 2, v=3}
 +  local k = M.Imm{1, 2, v=4}
 +  assert(t == t); assert(t ~= j)
-+  assertEq(t, t)
-+  assertEq(t, j)
++  T.eq(t, t)
++  T.eq(t, j)
 +
 +  assert(t ~= k); assert(not mty.eq(t, k))
-+  assertEq('{1, k=5}', fmt(M.Imm{1, k=5}))
-+  assertEq('table', mty.tyName(M.Imm{}))
++  T.eq('{1, k=5}', fmt(M.Imm{1, k=5}))
++  T.eq('table', mty.tyName(M.Imm{}))
 +
-+  assertEq({1, 2, v=3}, j) -- table vs Imm
++  T.eq({1, 2, v=3}, j) -- table vs Imm
 +  assert(not mty.eq({1, 2}, j))
 +
-+  assertEq({kind='Empty'}, M.Imm{kind='Empty'})
++  T.eq({kind='Empty'}, M.Imm{kind='Empty'})
 +end
 +
 +T.number = function()
@@ -12125,37 +11827,37 @@ initial commit
 +end
 +
 +T.str = function()
-+  assertEq('hi there', trim('  hi there\n '))
-+  assertEq('hi there', trim('hi there'))
++  T.eq('hi there', trim('  hi there\n '))
++  T.eq('hi there', trim('hi there'))
 +  local multi = [[  one
 +
 +three
 +four
 +
 +]]
-+  assertEq('  one\n\nthree\nfour\n\n', multi)
-+  assertEq('one\n\nthree\nfour', trim(multi))
++  T.eq('  one\n\nthree\nfour\n\n', multi)
++  T.eq('one\n\nthree\nfour', trim(multi))
 +
-+  assertEq('  a b c', M.trimEnd'  a b c')
-+  assertEq('  a b c', M.trimEnd'  a b c\n  ')
++  T.eq('  a b c', M.trimEnd'  a b c')
++  T.eq('  a b c', M.trimEnd'  a b c\n  ')
 +
-+  assertEq(' a bc d e ', M.squash'  a   bc \td\te ')
++  T.eq(' a bc d e ', M.squash'  a   bc \td\te ')
 +
 +  local u8 = "high🫸 five 🫷!"
 +  -- test utf8.offset itself
 +  local off = utf8.offset
-+  assertEq(4, off(u8, 4))
-+  assertEq(5, off(u8, 5)) -- start of 🫸
-+  assertEq(9, off(u8, 6));     assertEq(' five 🫷!', u8:sub(9))
-+  assertEq(9, off(u8, 1, 9))
-+  assertEq(19, off(u8, 8, 9)); assertEq('!', u8:sub(19))
-+  assertEq(2, off('a', 2))
++  T.eq(4, off(u8, 4))
++  T.eq(5, off(u8, 5)) -- start of 🫸
++  T.eq(9, off(u8, 6));     T.eq(' five 🫷!', u8:sub(9))
++  T.eq(9, off(u8, 1, 9))
++  T.eq(19, off(u8, 8, 9)); T.eq('!', u8:sub(19))
++  T.eq(2, off('a', 2))
 +
-+  assertEq("high", M.usub(u8, 1, 4))
-+  assertEq("🫸 f", M.usub(u8, 5, 7))
-+  assertEq("🫷!",  M.usub(u8, -2))
-+  assertEq("e 🫷", M.usub(u8, -4, -2))
-+  assertEq('',     M.usub(u8, 100))
++  T.eq("high", M.usub(u8, 1, 4))
++  T.eq("🫸 f", M.usub(u8, 5, 7))
++  T.eq("🫷!",  M.usub(u8, -2))
++  T.eq("e 🫷", M.usub(u8, -4, -2))
++  T.eq('',     M.usub(u8, 100))
 +end
 +
 +T.table = function()
@@ -12173,115 +11875,115 @@ initial commit
 +  assert(8 == M.popk(t, 'a')) assert(9 == M.popk(t, 'b'))
 +  assert(0 == #t)
 +
-+  assertEq(5,   getOrSet({a=5}, 'a', function() return 7 end))
-+  assertEq(7,   getOrSet({b=5}, 'a', function() return 7 end))
-+  assertEq(7,   get({a={b=7}}, {'a', 'b'}))
-+  assertEq(nil, get({}, {'a', 'b'}))
++  T.eq(5,   getOrSet({a=5}, 'a', function() return 7 end))
++  T.eq(7,   getOrSet({b=5}, 'a', function() return 7 end))
++  T.eq(7,   get({a={b=7}}, {'a', 'b'}))
++  T.eq(nil, get({}, {'a', 'b'}))
 +
 +  local t = {}
-+  set(t, dp'a.b',   4);   assertEq(4, t.a.b)
-+  set(t, dp'a.a.a', 5);   assertEq(5, t.a.a.a)
-+  set(t, dp'a.a.a', nil); assertEq(nil, t.a.a.a)
-+  set(t, dp'a.b',   4);   assertEq(4, t.a.b)
++  set(t, dp'a.b',   4);   T.eq(4, t.a.b)
++  set(t, dp'a.a.a', 5);   T.eq(5, t.a.a.a)
++  set(t, dp'a.a.a', nil); T.eq(nil, t.a.a.a)
++  set(t, dp'a.b',   4);   T.eq(4, t.a.b)
 +
 +  t = {}; for i, v in M.inext, {4, 5, 8}, 0 do t[i] = v end
-+  assertEq({4, 5, 8}, t)
++  T.eq({4, 5, 8}, t)
 +  t = {}; for i, v in M.iprev, {4, 5, 8}, 4 do t[i] = v end
-+  assertEq({4, 5, 8}, t)
++  T.eq({4, 5, 8}, t)
 +  t = {}; for i, v in M.ireverse{4, 5, 8} do t[i] = v end
-+  assertEq({4, 5, 8}, t)
++  T.eq({4, 5, 8}, t)
 +
 +  t = {}; for i, v in M.islice({5, 6, 7, 8, 9}, 2, 4) do push(t, v) end
-+  assertEq({6, 7, 8}, t)
++  T.eq({6, 7, 8}, t)
 +
 +  t = {}
 +  M.walk(
 +    {1, 2, a=3, inner={b=9, c='hi'}},
 +    function(k, v) t[k] = v end,
 +    function(k, v) t[k] = true end)
-+  assertEq({1, 2, a=3, b=9, c='hi', inner=true}, t)
++  T.eq({1, 2, a=3, b=9, c='hi', inner=true}, t)
 +
 +  t = {} for _, v in M.ilast({1, 2, 3, 4, 5}, -3, -1) do push(t, v) end
-+  assertEq({3, 4, 5}, t)
++  T.eq({3, 4, 5}, t)
 +  t = {} for _, v in M.ilast({1, 2, 3, 4, 5}, -3, -2) do push(t, v) end
-+  assertEq({3, 4}, t)
++  T.eq({3, 4}, t)
 +  t = {} for _, v in M.ilast({1, 2, 3, 4, 5}, -2, -2) do push(t, v) end
-+  assertEq({4}, t)
++  T.eq({4}, t)
 +  t = {} for _, v in M.ilast({1, 2, 3, 4, 5}, -2) do push(t, v) end
-+  assertEq({4, 5}, t)
++  T.eq({4, 5}, t)
 +
 +  t = M.Forget{a=4}
-+  assertEq(4, t.a)
++  T.eq(4, t.a)
 +  t.b = 7; t[1] = 4
-+  assertEq(nil, t.b); assertEq(nil, t[1])
++  T.eq(nil, t.b); T.eq(nil, t[1])
 +
 +  t = {4, 5, 6}
-+  assertEq({4, 5, 6, 7, 8}, M.add(t, 7, 8))
++  T.eq({4, 5, 6, 7, 8}, M.add(t, 7, 8))
 +
 +  t = {1, a=3, b={4, 5, b1=3}, c=3}
-+  assertEq({2, a=4, b={4, 7, 6, b1=3, b2=4}, c=3}, merge(t, {
++  T.eq({2, a=4, b={4, 7, 6, b1=3, b2=4}, c=3}, merge(t, {
 +    2, a=4, b={[2]=7, [3]=6, b2=4},
 +  }))
 +
-+  assertEq(2, M.pairlen{1, 2})
-+  assertEq(3, M.pairlen{1, 2, z=4})
++  T.eq(2, M.pairlen{1, 2})
++  T.eq(3, M.pairlen{1, 2, z=4})
 +
-+  assertEq({4, 2, 3}, M.icopy{4, 2, 3, a=4})
++  T.eq({4, 2, 3}, M.icopy{4, 2, 3, a=4})
 +
-+  assertEq({'a', 'b', 'c'}, M.orderedKeys{a=1, b=2, c=3})
-+  assertEq({'a', 'b', 'c', a=1, b=2, c=3}, M.pushSortedKeys{a=1, b=2, c=3})
++  T.eq({'a', 'b', 'c'}, M.orderedKeys{a=1, b=2, c=3})
++  T.eq({'a', 'b', 'c', a=1, b=2, c=3}, M.pushSortedKeys{a=1, b=2, c=3})
 +
-+  assertEq({1}, M.sortUnique{1})
-+  assertEq({'a', 'b', 'c'}, M.sortUnique{'c', 'b', 'a'})
-+  assertEq({'a', 'b', 'c'}, M.sortUnique{'a', 'c', 'b', 'a'})
-+  assertEq({'.', 'h', 's'}, M.sortUnique{'h', '.', 's', 'h'})
++  T.eq({1}, M.sortUnique{1})
++  T.eq({'a', 'b', 'c'}, M.sortUnique{'c', 'b', 'a'})
++  T.eq({'a', 'b', 'c'}, M.sortUnique{'a', 'c', 'b', 'a'})
++  T.eq({'.', 'h', 's'}, M.sortUnique{'h', '.', 's', 'h'})
 +end
 +
 +T.Slc = function()
 +  local Slc = M.Slc
 +  local a = Slc{si=2, ei=10}
-+  assertEq(9, #a); assertEq('Slc[2:10]', fmt(a))
-+  assertEq({Slc{si=2, ei=14}}, {a:merge(Slc{si=4, ei=14})})
++  T.eq(9, #a); T.eq('Slc[2:10]', fmt(a))
++  T.eq({Slc{si=2, ei=14}}, {a:merge(Slc{si=4, ei=14})})
 +
 +  local expect = {Slc{si=2, ei=10}, Slc{si=12, ei=13}}
-+  assertEq(expect, {a:merge(Slc{si=12, ei=13})})
-+  assertEq(expect, {Slc{si=12, ei=13}:merge(a)})
++  T.eq(expect, {a:merge(Slc{si=12, ei=13})})
++  T.eq(expect, {Slc{si=12, ei=13}:merge(a)})
 +end
 +
 +T.list = function()
 +  local t = {4, 5, 6}
-+  assertEq(4, M.geti(t, 1))
-+  assertEq(6, M.geti(t, -1))
-+  assertEq(5, M.geti(t, -2))
++  T.eq(4, M.geti(t, 1))
++  T.eq(6, M.geti(t, -1))
++  T.eq(5, M.geti(t, -2))
 +
-+  assertEq({1, 2, 3}, extend({1}, {2, 3}))
++  T.eq({1, 2, 3}, extend({1}, {2, 3}))
 +  local t = {4, 5}; extend(t, {1, 2})
-+  assertEq({4, 5, 1, 2}, t)
-+  assertEq({}, clear{1, 2, 3})
-+  assertEq({1, 2}, replace({4, 5, 6}, {1, 2}))
-+  assertEq({1, 2}, replace({3}, {1, 2}))
++  T.eq({4, 5, 1, 2}, t)
++  T.eq({}, clear{1, 2, 3})
++  T.eq({1, 2}, replace({4, 5, 6}, {1, 2}))
++  T.eq({1, 2}, replace({3}, {1, 2}))
 +
-+  assertEq({1,2,5,7}, M.flatten({1,2},{5},{7}))
++  T.eq({1,2,5,7}, M.flatten({1,2},{5},{7}))
 +
 +  local l = {'a', 'b', 'c', 1, 2, 3}
-+  assertEq({1, 2, 3}, drain(l, 3))
-+  assertEq({'a', 'b', 'c'}, l)
-+  assertEq({}, drain(l, 0))
-+  assertEq({'a', 'b', 'c'}, l)
-+  assertEq({'c'}, drain(l, 1))
-+  assertEq({'a', 'b'}, l)
-+  assertEq({'a', 'b'}, drain(l, 7))
-+  assertEq({}, l)
++  T.eq({1, 2, 3}, drain(l, 3))
++  T.eq({'a', 'b', 'c'}, l)
++  T.eq({}, drain(l, 0))
++  T.eq({'a', 'b', 'c'}, l)
++  T.eq({'c'}, drain(l, 1))
++  T.eq({'a', 'b'}, l)
++  T.eq({'a', 'b'}, drain(l, 7))
++  T.eq({}, l)
 +
-+  assertEq({2, 1},    reverse({1, 2}))
-+  assertEq({3, 2, 1}, reverse({1, 2, 3}))
++  T.eq({2, 1},    reverse({1, 2}))
++  T.eq({3, 2, 1}, reverse({1, 2, 3}))
 +
-+  assertEq({}, M.inset({}, 1, {}))
++  T.eq({}, M.inset({}, 1, {}))
 +  local t = M.inset({1}, 1, {}, 1)
-+  assertEq({}, t) -- remove
-+  assertEq({1, 2, 3}, M.inset({1, 3}, 2, {2}))
-+  assertEq({1, 2, 3}, M.inset({1, 4, 3}, 2, {2}, 1))
-+  assertEq({"ab", "d"}, M.inset({"ab", "c", "", "d"}, 2, {}, 2))
++  T.eq({}, t) -- remove
++  T.eq({1, 2, 3}, M.inset({1, 3}, 2, {2}))
++  T.eq({1, 2, 3}, M.inset({1, 4, 3}, 2, {2}, 1))
++  T.eq({"ab", "d"}, M.inset({"ab", "c", "", "d"}, 2, {}, 2))
 +end
 +
 +T.eval = function()
@@ -12289,127 +11991,127 @@ initial commit
 +  local ok, err = eval('1+', env)
 +  assert(not ok); assert(err)
 +  local ok, three = eval('return 3', env)
-+  assert(ok); assertEq({}, env)
-+  assertEq(3, three)
++  assert(ok); T.eq({}, env)
++  T.eq(3, three)
 +  local ok, three = eval('seven = 7', env)
-+  assert(ok); assertEq({seven=7}, env)
++  assert(ok); T.eq({seven=7}, env)
 +  assert(not G.seven) -- did not modify globals
 +end
 +
 +T.Set = function()
 +  local s = Set{'a', 'b', 'c'}
-+  assertEq(Set{'a', 'c', 'b'}, s)
-+  assertEq(Set{'a', 'b'}, s:union(Set{'a', 'b', 'z'}))
-+  assertEq(Set{'a'}, s:diff(Set{'b', 'c', 'z'}))
++  T.eq(Set{'a', 'c', 'b'}, s)
++  T.eq(Set{'a', 'b'}, s:union(Set{'a', 'b', 'z'}))
++  T.eq(Set{'a'}, s:diff(Set{'b', 'c', 'z'}))
 +end
 +
 +T.LL = function()
 +  local h, _ = LL(2)
-+  assertEq({2}, h:tolist())
++  T.eq({2}, h:tolist())
 +
 +  -- '+' and '-'
-+  local res = h - LL(4)      assertEq({2, 4}, h:tolist())
++  local res = h - LL(4)      T.eq({2, 4}, h:tolist())
 +  local t = h:tail();        assert(rawequal(t, res))
-+  _= h - (LL(5) + 6);        assertEq({2, 4, 5, 6}, h:tolist())
++  _= h - (LL(5) + 6);        T.eq({2, 4, 5, 6}, h:tolist())
 +
 +  -- pop
-+  h = LL:from{1, 2, 3, 4};   assertEq({1, 2, 3, 4}, h:tolist())
++  h = LL:from{1, 2, 3, 4};   T.eq({1, 2, 3, 4}, h:tolist())
 +  local n2 = h.r
 +  local n3 = n2.r
 +    assert(not (rawequal(h, n2) or rawequal(h, n3)))
 +    assert(rawequal(n2,  h:get(1)))
 +    assert(rawequal(h,   n2.l))
 +
-+  assertEq(nil, n2:rm())
-+    assertEq({1, 3, 4}, h:tolist())
++  T.eq(nil, n2:rm())
++    T.eq({1, 3, 4}, h:tolist())
 +    assert(rawequal(h.r, n3))
 +    assert(rawequal(h,   n3.l))
 +    assert(rawequal(n3, h:rm())) -- new head
 +
 +  -- insert
 +  h = LL:from{1, 3, 4}
-+  h:insert(2);        assertEq({1, 2, 3, 4},    h:tolist())
++  h:insert(2);        T.eq({1, 2, 3, 4},    h:tolist())
 +    assert(rawequal(h, h.r.l))
-+  h:tail():insert(5); assertEq({1, 2, 3, 4, 5}, h:tolist())
-+    assertEq(4, h:tail().l.v)
++  h:tail():insert(5); T.eq({1, 2, 3, 4, 5}, h:tolist())
++    T.eq(4, h:tail().l.v)
 +
-+  assertEq('LL{1 -> 3 -> 5}', fmt((LL:from{1, 3, 5})))
++  T.eq('LL{1 -> 3 -> 5}', fmt((LL:from{1, 3, 5})))
 +end
 +
 +T['binary-search'] = function()
 +  local bs = M.binarySearch
 +  local t = {1, 5, 8, 10, 12, 33}
-+  assertEq(0,   bs(t, -1))
-+  assertEq(1,   bs(t, 1))  assertEq(1,   bs(t, 4))
-+  assertEq(2,   bs(t, 5))  assertEq(2,   bs(t, 7))
-+  assertEq(5,   bs(t, 12)) assertEq(5,   bs(t, 32))
-+  assertEq(6,   bs(t, 33)) assertEq(6,   bs(t, 1024))
++  T.eq(0,   bs(t, -1))
++  T.eq(1,   bs(t, 1))  T.eq(1,   bs(t, 4))
++  T.eq(2,   bs(t, 5))  T.eq(2,   bs(t, 7))
++  T.eq(5,   bs(t, 12)) T.eq(5,   bs(t, 32))
++  T.eq(6,   bs(t, 33)) T.eq(6,   bs(t, 1024))
 +end
 +
 +T.time = function()
 +  local N = Duration.NANO
 +  local d = Duration(3, 500)
-+  assertEq(Duration(2, 500),     Duration(3, 500) - Duration(1))
-+  assertEq(Duration(2, N - 900), Duration(3, 0)   - Duration(0, 900))
-+  assertEq(Duration(2, N - 800), Duration(3, 100) - Duration(0, 900))
-+  assertEq(Duration(2), Duration:fromMs(2000))
++  T.eq(Duration(2, 500),     Duration(3, 500) - Duration(1))
++  T.eq(Duration(2, N - 900), Duration(3, 0)   - Duration(0, 900))
++  T.eq(Duration(2, N - 800), Duration(3, 100) - Duration(0, 900))
++  T.eq(Duration(2), Duration:fromMs(2000))
 +  assert(Duration(2) < Duration(3))
 +  assert(Duration(2) < Duration(2, 100))
 +  assert(not (Duration(2) < Duration(2)))
-+  assertEq(Duration(1.5), Duration(1, N * 0.5))
-+  assertEq('1.5s', tostring(Duration(1.5)))
++  T.eq(Duration(1.5), Duration(1, N * 0.5))
++  T.eq('1.5s', tostring(Duration(1.5)))
 +
-+  assertEq(Epoch(1) - Duration(1), Epoch(0))
-+  assertEq(Epoch(1) - Epoch(0), Duration(1))
++  T.eq(Epoch(1) - Duration(1), Epoch(0))
++  T.eq(Epoch(1) - Epoch(0), Duration(1))
 +  local e =    Epoch(1000001, 12342)
-+  assertEq(e - Epoch(1000000, 12342), Duration(1))
-+  assertEq('Epoch(1.5s)', tostring(Epoch(1.5)))
++  T.eq(e - Epoch(1000000, 12342), Duration(1))
++  T.eq('Epoch(1.5s)', tostring(Epoch(1.5)))
 +end
 +
 +
 +local function assertPath(fn, expect, p)
-+  assertEq(expect, fn(p))       -- pass in string
-+  assertEq(expect, fn(path(p))) -- pass in table
++  T.eq(expect, fn(p))       -- pass in string
++  T.eq(expect, fn(path(p))) -- pass in table
 +end
 +T.ds_path = function()
-+  assertEq({'a', 'b', 'c'},  path('a/b/c'))
-+  assertEq({'/', 'b', 'c'},  path('/b/c'))
-+  assertEq({'a', 'b', 'c/'}, path('a/b/c/'))
-+  assertEq({'a', 'b', 'c'},  path{'a', 'b', 'c'})
-+  assertEq({'/', 'b', 'c'},  path{'/', 'b', 'c'})
++  T.eq({'a', 'b', 'c'},  path('a/b/c'))
++  T.eq({'/', 'b', 'c'},  path('/b/c'))
++  T.eq({'a', 'b', 'c/'}, path('a/b/c/'))
++  T.eq({'a', 'b', 'c'},  path{'a', 'b', 'c'})
++  T.eq({'/', 'b', 'c'},  path{'/', 'b', 'c'})
 +
 +  local pc = path.concat
-+  assertEq('foo/bar',   pc{'foo/', 'bar'})
-+  assertEq('/foo/bar',  pc{'/foo/', 'bar'})
-+  assertEq('/foo/bar/', pc{'/foo/', 'bar/'})
-+  assertEq('',          pc{''})
-+  assertEq('a/b',       pc{'a', '', 'b'})
-+  assertEq('a/b',       pc{'a/', '', 'b'})
++  T.eq('foo/bar',   pc{'foo/', 'bar'})
++  T.eq('/foo/bar',  pc{'/foo/', 'bar'})
++  T.eq('/foo/bar/', pc{'/foo/', 'bar/'})
++  T.eq('',          pc{''})
++  T.eq('a/b',       pc{'a', '', 'b'})
++  T.eq('a/b',       pc{'a/', '', 'b'})
 +
 +  local pr = path.resolve
-+  assertEq({'/', '.a'},      pr('/.a'))
-+  assertEq({'/', '..a'},     pr('/..a'))
-+  assertEq({'/', 'a.'},      pr('/a.'))
-+  assertEq({'/', 'a..'},     pr('/a..'))
-+  assertEq({'a/'},           pr'a/b/..')
-+  assertEq({'b'},            pr'a/../b')
-+  assertEq({'b/'},           pr'a/../b/')
-+  assertEq({'/', 'a', 'b/'}, pr('..',       '/a/b/c/'))
-+  assertEq({'/', 'a', 'd/'}, pr('../../d/', '/a/b/c/'))
-+  assertEq({'/'},            pr('/a/..'))
-+  assertEq({},               pr('a/..'))
-+  assertErrorPat('before root', function() pr('/..')    end)
-+  assertErrorPat('before root', function() pr('/../..') end)
-+  assertErrorPat('before root', function() pr('/../../a') end)
-+  assertErrorPat('before root', function() pr('/a/../..') end)
-+  assertErrorPat('before root', function() pr('/a/../../') end)
++  T.eq({'/', '.a'},      pr('/.a'))
++  T.eq({'/', '..a'},     pr('/..a'))
++  T.eq({'/', 'a.'},      pr('/a.'))
++  T.eq({'/', 'a..'},     pr('/a..'))
++  T.eq({'a/'},           pr'a/b/..')
++  T.eq({'b'},            pr'a/../b')
++  T.eq({'b/'},           pr'a/../b/')
++  T.eq({'/', 'a', 'b/'}, pr('..',       '/a/b/c/'))
++  T.eq({'/', 'a', 'd/'}, pr('../../d/', '/a/b/c/'))
++  T.eq({'/'},            pr('/a/..'))
++  T.eq({},               pr('a/..'))
++  T.throws('before root', function() pr('/..')    end)
++  T.throws('before root', function() pr('/../..') end)
++  T.throws('before root', function() pr('/../../a') end)
++  T.throws('before root', function() pr('/a/../..') end)
++  T.throws('before root', function() pr('/a/../../') end)
 +
 +  local pn = path.nice
-+  assertEq('./',        pn('a/..'))
-+  assertEq('/a/b/',     pn('..', '/a/b/c/'))
-+  assertEq('d/e',       pn('/a/b/c/d/e',  '/a/b/c'))
-+  assertEq('d/e/',      pn('/a/b/c/d/e/', '/a/b/c'))
-+  assertEq('a',         pn('./a'))
++  T.eq('./',        pn('a/..'))
++  T.eq('/a/b/',     pn('..', '/a/b/c/'))
++  T.eq('d/e',       pn('/a/b/c/d/e',  '/a/b/c'))
++  T.eq('d/e/',      pn('/a/b/c/d/e/', '/a/b/c'))
++  T.eq('a',         pn('./a'))
 +
 +  local pe = path.ext
 +  assertPath(pe, 'foo', 'coo.foo')
@@ -12417,32 +12119,32 @@ initial commit
 +  assertPath(pe, 'bar', 'a/b.c/d.foo.bar')
 +
 +  local pf = path.first
-+  assertEq({'/',  'a/b/c/'}, {pf'/a/b/c/'})
-+  assertEq({'a',  'b/c/'},   {pf'a/b/c/'})
-+  assertEq({'/',  'a/b/'},   {pf'/a/b/'})
-+  assertEq({'/',  'a/b'},    {pf'/a/b'})
-+  assertEq({'/',  'b'},      {pf'/b'})
-+  assertEq({'b',  ''},       {pf'b'})
-+  assertEq({'/',  'b/'},     {pf'/b/'})
-+  assertEq({'/',  ''},       {pf'/'})
++  T.eq({'/',  'a/b/c/'}, {pf'/a/b/c/'})
++  T.eq({'a',  'b/c/'},   {pf'a/b/c/'})
++  T.eq({'/',  'a/b/'},   {pf'/a/b/'})
++  T.eq({'/',  'a/b'},    {pf'/a/b'})
++  T.eq({'/',  'b'},      {pf'/b'})
++  T.eq({'b',  ''},       {pf'b'})
++  T.eq({'/',  'b/'},     {pf'/b/'})
++  T.eq({'/',  ''},       {pf'/'})
 +
 +  local pl = path.last
-+  assertEq({'/a/b/', 'c/'}, {pl'/a/b/c/'})
-+  assertEq({'a/b/', 'c/'},  {pl'a/b/c/'})
-+  assertEq({'/a/', 'b/'},   {pl'/a/b/'})
-+  assertEq({'/a/', 'b'},    {pl'/a/b'})
-+  assertEq({'', '/b'},      {pl'/b'})
-+  assertEq({'', 'b'},       {pl'b'})
-+  assertEq({'', '/b/'},     {pl'/b/'})
-+  assertEq({'', '/'},       {pl'/'})
++  T.eq({'/a/b/', 'c/'}, {pl'/a/b/c/'})
++  T.eq({'a/b/', 'c/'},  {pl'a/b/c/'})
++  T.eq({'/a/', 'b/'},   {pl'/a/b/'})
++  T.eq({'/a/', 'b'},    {pl'/a/b'})
++  T.eq({'', '/b'},      {pl'/b'})
++  T.eq({'', 'b'},       {pl'b'})
++  T.eq({'', '/b/'},     {pl'/b/'})
++  T.eq({'', '/'},       {pl'/'})
 +
-+  assertEq(true, path.isDir('/'))
-+  assertEq('/',  path.toDir('/'))
-+  assertEq('a/', path.toDir('a'))
-+  assertEq('a',  path.toNonDir('a'))
-+  assertEq('a',  path.toNonDir('a/'))
++  T.eq(true, path.isDir('/'))
++  T.eq('/',  path.toDir('/'))
++  T.eq('a/', path.toDir('a'))
++  T.eq('a',  path.toNonDir('a'))
++  T.eq('a',  path.toNonDir('a/'))
 +
-+  assertEq({'y', 'z/z', 'a/', 'a/b/'},
++  T.eq({'y', 'z/z', 'a/', 'a/b/'},
 +    M.sort({'a/', 'a/b/', 'z/z', 'y'}, path.cmpDirsLast))
 +end
 +
@@ -12456,14 +12158,14 @@ initial commit
 +  local t = {}; while #h > 0 do
 +    push(t, h:pop())
 +  end
-+  assertEq(expect, t)
++  T.eq(expect, t)
 +end
 +T.heap = function()
 +  local h = heap.Heap{1, 5, 9, 10, 3, 2}
 +  assertPops({1, 2, 3, 5, 9, 10}, h)
-+  assertEq(0, #h)
++  T.eq(0, #h)
 +  pushh(h, {8, 111, -1, 333, 42})
-+  assertEq(heap.Heap{-1, 42, 8, 333, 111}, h)
++  T.eq(heap.Heap{-1, 42, 8, 333, 111}, h)
 +  assertPops({-1, 8, 42, 111, 333}, h)
 +
 +  h = heap.Heap{1, 5, 9, 10, 3, 2, cmp=M.gt}
@@ -12481,51 +12183,51 @@ initial commit
 +  }
 +  local parentsMap = M.dag.reverseMap(childrenMap)
 +  for _, v in pairs(parentsMap) do table.sort(v) end
-+  assertEq({
++  T.eq({
 +    d = {'b', 'c'}, c = {'a', 'b'},
 +    b = {'a'},      a = {},
 +  }, parentsMap)
 +
 +  local result = M.dag.reverseMap(parentsMap)
 +  for _, v in pairs(result) do table.sort(v) end
-+  assertEq(childrenMap, result)
++  T.eq(childrenMap, result)
 +
-+  assertEq({'d', 'c', 'b', 'a'}, M.dag.sort(childrenMap))
++  T.eq({'d', 'c', 'b', 'a'}, M.dag.sort(childrenMap))
 +end
 +
 +T.bimap = function()
 +  local bm = M.BiMap{'one', 'two'}
-+  assertEq(bm[1], 'one');   assertEq(bm.one, 1)
-+  assertEq(bm[2], 'two');   assertEq(bm.two, 2)
++  T.eq(bm[1], 'one');   T.eq(bm.one, 1)
++  T.eq(bm[2], 'two');   T.eq(bm.two, 2)
 +  bm[3] = 'three'
-+  assertEq(bm[3], 'three'); assertEq(bm.three, 3)
-+  assertEq('BiMap{"one", "two", "three", one=1, three=3, two=2}',
++  T.eq(bm[3], 'three'); T.eq(bm.three, 3)
++  T.eq('BiMap{"one", "two", "three", one=1, three=3, two=2}',
 +           fmt(bm))
 +
 +  local bm = M.BiMap{a='A'}
-+  assertEq(bm.a, 'A'); assertEq(bm.A, 'a')
++  T.eq(bm.a, 'A'); T.eq(bm.A, 'a')
 +  bm.b = 'B'
-+  assertEq(bm.b, 'B'); assertEq(bm.B, 'b')
-+  assertEq('BiMap{A="a", B="b", a="A", b="B"}'
-+         , fmt(bm))
++  T.eq(bm.b, 'B'); T.eq(bm.B, 'b')
++  T.eq('BiMap{A="a", B="b", a="A", b="B"}'
++       , fmt(bm))
 +end
 +
 +T.deq = function()
 +  local d = M.Deq()
-+  d:pushRight(4); assertEq(1, #d)
-+  d:pushRight(5); assertEq(2, #d)
-+  d:pushLeft(3);  assertEq(3, #d)
-+  assertEq(3, d());          assertEq(2, #d)
-+  assertEq(5, d:popRight()); assertEq(1, #d)
-+  assertEq(4, d());          assertEq(0, #d)
++  d:pushRight(4); T.eq(1, #d)
++  d:pushRight(5); T.eq(2, #d)
++  d:pushLeft(3);  T.eq(3, #d)
++  T.eq(3, d());          T.eq(2, #d)
++  T.eq(5, d:popRight()); T.eq(1, #d)
++  T.eq(4, d());          T.eq(0, #d)
 +
 +  d = M.Deq()
 +  d:extendRight{1, 2}; d:extendLeft{4, 5}; d:extendRight{6, 7}
 +  setmetatable(d, nil)
-+  assertEq({[-1]=4, [0]=5, 1, 2, 6, 7, left=-1, right=4},
++  T.eq({[-1]=4, [0]=5, 1, 2, 6, 7, left=-1, right=4},
 +    setmetatable(d, nil))
-+  assertEq({4, 5, 1, 2, 6, 7}, setmetatable(d, M.Deq):drain())
-+  assertEq({left=1, right=0}, setmetatable(d, nil))
++  T.eq({4, 5, 1, 2, 6, 7}, setmetatable(d, M.Deq):drain())
++  T.eq({left=1, right=0}, setmetatable(d, nil))
 +end
 +
 +local TB = [[
@@ -12540,13 +12242,13 @@ initial commit
 +  end)
 +  T.eq({'a', nil, 'c'}, {M.check(2, 'a', nil, 'c')})
 +
-+  assertEq({
++  T.eq({
 +    "[C]: in function 'string.gsub'",
 +    "lib/ds/ds.lua:1064: in function 'ds.tracelist'",
 +    "lib/ds/ds.lua:1084: in function <lib/ds/ds.lua:1081>"
 +  }, M.tracelist(TB))
 +
-+  local ok, err = M.try(c); assertEq(false, ok)
++  local ok, err = M.try(c); T.eq(false, ok)
 +  M.clear(err.traceback, 4)
 +  local expect = M.Error{
 +    msg='a error',
@@ -12556,12 +12258,12 @@ initial commit
 +      "lib/ds/test.lua:6: in function <lib/ds/test.lua:6>",
 +    },
 +  }
-+  assertEq(expect, err)
++  T.eq(expect, err)
 +
 +  local cor = coroutine.create(c)
 +  local ok, msg = coroutine.resume(cor)
 +  assert(not ok)
-+  assertEq(expect, M.Error.from(msg, cor))
++  T.eq(expect, M.Error.from(msg, cor))
 +end
 +
 +---------------------
@@ -12575,64 +12277,64 @@ initial commit
 +  local plus2 = function(v) return v + 2 end
 +  local vToString = function(k, v) return k, tostring(v)  end
 +
-+  assertEq(t, It:ofList(t):to())
-+  assertEq(t, It:of(t):to())
-+  assertEq(t, It:ofList(t):valsTo())
-+  assertEq({1, 2, 3, 4}, It:ofList(t):keysTo())
++  T.eq(t, It:ofList(t):to())
++  T.eq(t, It:of(t):to())
++  T.eq(t, It:ofList(t):valsTo())
++  T.eq({1, 2, 3, 4}, It:ofList(t):keysTo())
 +
-+  assertEq({4, 5, [4]=7}, It:ofList(t):filter(numberVals):to())
-+  assertEq({1, 2, 4}, It:ofList(t):filter(numberVals):keysTo())
-+  assertEq({4, 5, 7}, It:ofList(t):filter(numberVals):valsTo())
++  T.eq({4, 5, [4]=7}, It:ofList(t):filter(numberVals):to())
++  T.eq({1, 2, 4}, It:ofList(t):filter(numberVals):keysTo())
++  T.eq({4, 5, 7}, It:ofList(t):filter(numberVals):valsTo())
 +
-+  assertEq({4, 5, 7}, It:ofList(t):filterV(isNumber):valsTo())
-+  assertEq({6, 7, 9},
++  T.eq({4, 5, 7}, It:ofList(t):filterV(isNumber):valsTo())
++  T.eq({6, 7, 9},
 +    It:ofList(t):filterV(isNumber):mapV(plus2):valsTo())
 +
 +  local strs = {'4', '5', 'six', '7'}
-+  assertEq(strs, It:ofList(t):map(vToString):to())
-+  assertEq(strs, It:ofList(t):mapV(tostring):to())
-+  assertEq({1, 2, 3, 4}, It:ofList(t):mapV(tostring):keysTo())
++  T.eq(strs, It:ofList(t):map(vToString):to())
++  T.eq(strs, It:ofList(t):mapV(tostring):to())
++  T.eq({1, 2, 3, 4}, It:ofList(t):mapV(tostring):keysTo())
 +
-+  assertEq({['1'] = 4, ['2'] = 5, ['3'] = 'six', ['4'] = 7},
++  T.eq({['1'] = 4, ['2'] = 5, ['3'] = 'six', ['4'] = 7},
 +    It:of(t):mapK(tostring):to())
 +
 +  local lk = {11, 22, 33, 44, 55, 'unused', 77, six=666}
-+  assertEq({11, 22, 33,  44}, It:ofList(t):lookupK(lk):keysTo())
-+  assertEq({44, 55, 666, 77}, It:of(t):lookupV(lk):to())
++  T.eq({11, 22, 33,  44}, It:ofList(t):lookupK(lk):keysTo())
++  T.eq({44, 55, 666, 77}, It:of(t):lookupV(lk):to())
 +
 +
 +  local it = It:ofList(t):lookupK(lk)
 +  local res = {}; for k, v in it do push(res, k)end
-+  assertEq({11, 22, 33,  44}, res)
++  T.eq({11, 22, 33,  44}, res)
 +
 +  -- local it = It:ofList(t):lookupK(lk)
 +  -- local res = {}; for k, v in it:iter() do push(res, k)end
-+  -- assertEq({11, 22, 33,  44}, res)
++  -- T.eq({11, 22, 33,  44}, res)
 +
 +  -- local it = It:ofList(t):lookupV(lk)
 +  -- local res = {}; for k, v in it:iter() do res[k] = v end
-+  -- assertEq({44, 55, 666, 77}, res)
++  -- T.eq({44, 55, 666, 77}, res)
 +
 +  -- use a big table
 +  local t = {}; for i=100,1,-1 do t[sfmt('%03i', i)] = i end
-+  assertEq(t['001'], 1); assertEq(t['100'], 100);
++  T.eq(t['001'], 1); T.eq(t['100'], 100);
 +  local expect = {}; for i=1,100  do expect[i] = i end
-+  assertEq(expect, It:ofOrdMap(t):valsTo())
-+  assertEq(expect, It:ofOrdMap(t):index():to())
++  T.eq(expect, It:ofOrdMap(t):valsTo())
++  T.eq(expect, It:ofOrdMap(t):index():to())
 +
-+  assertEq({a=1, b=2, c=3}, It:of{'a', 'b', 'c'}:swap():to())
++  T.eq({a=1, b=2, c=3}, It:of{'a', 'b', 'c'}:swap():to())
 +
 +  local t = {10, 20, 30, 40, 50, 60}
-+  assertEq({40, 50, 60},             It:ofSlc(t, 4):valsTo())
-+  assertEq({[4]=40, [5]=50, [6]=60}, It:ofSlc(t, 4):to())
++  T.eq({40, 50, 60},             It:ofSlc(t, 4):valsTo())
++  T.eq({[4]=40, [5]=50, [6]=60}, It:ofSlc(t, 4):to())
 +
-+  assertEq({[2]=20, [4]=40}, It:of(t):keyIn{[2]=1,  [4]=1}:to())
-+  assertEq({[2]=20, [4]=40}, It:of(t):valIn{[20]=1, [40]=1}:to())
++  T.eq({[2]=20, [4]=40}, It:of(t):keyIn{[2]=1,  [4]=1}:to())
++  T.eq({[2]=20, [4]=40}, It:of(t):valIn{[20]=1, [40]=1}:to())
 +
-+  assertEq(true,  It:of{true, true, true}:all())
-+  assertEq(false, It:of{true, false, true}:all())
-+  assertEq(true,  It:of{false, false, true, false}:any())
-+  assertEq(false, It:of{false, false, false, false}:any())
++  T.eq(true,  It:of{true, true, true}:all())
++  T.eq(false, It:of{true, false, true}:all())
++  T.eq(true,  It:of{false, false, true, false}:any())
++  T.eq(false, It:of{false, false, false, false}:any())
 +
 +  It{ipairs{11, 12, 13}}:assertEq(It{ipairs{11, 12, 13}})
 +
@@ -12654,9 +12356,9 @@ initial commit
 +
 +local function testU8(expect, chrs)
 +  local len = d8.decodelen(chrs[1]); assert(len, 'len is nil')
-+  assertEq(#chrs, len)
++  T.eq(#chrs, len)
 +  c = d8.decode(chrs)
-+  assertEq(expect, utf8.char(c))
++  T.eq(expect, utf8.char(c))
 +end
 +
 +-- chrs were gotten from python:
@@ -12696,17 +12398,17 @@ initial commit
 +  LOGFN = function(lvl, loc, ...)
 +    push(logs, {lvl, ...}) -- skip loc
 +  end
-+  L.info'test info';              assertEq({4, 'test info'}, pop(logs))
++  L.info'test info';              T.eq({4, 'test info'}, pop(logs))
 +  L.info('test %s', 'fmt')
-+    assertEq({4, 'test %s', 'fmt'}, pop(logs))
++    T.eq({4, 'test %s', 'fmt'}, pop(logs))
 +
 +  L.info('test %s', 'data', {1})
-+    assertEq({4, 'test %s', 'data', {1}}, pop(logs))
++    T.eq({4, 'test %s', 'data', {1}}, pop(logs))
 +
 +  LOGLEVEL = L.levelInt'WARN'
-+  L.info'test no log'; assertEq(0, #logs)
-+  L.warn'test warn';   assertEq({3, 'test warn'}, pop(logs))
-+  assertEq(0, #logs)
++  L.info'test no log'; T.eq(0, #logs)
++  L.warn'test warn';   T.eq({3, 'test warn'}, pop(logs))
++  T.eq(0, #logs)
 +  LOGFN = fn
 +
 +  LOGLEVEL = L.levelInt'INFO'
@@ -12718,8 +12420,8 @@ initial commit
 +  local assertLog = function(lvl, expect, fn, ...)
 +    f:seek'set'; fn(...); f:seek'set'
 +    local res = f:read'a'
-+    local m = lvl..cxt; assertMatch(m, res)
-+    assertEq(expect, res:sub(#res:match(m) + 1))
++    local m = lvl..cxt; T.matches(m, res)
++    T.eq(expect, res:sub(#res:match(m) + 1))
 +  end
 +  assertLog('I', 'test 42\n', L.info, 'test %s', 42)
 +  assertLog('I', 'test data {1}\n', L.info, 'test %s', 'data', {1})
@@ -12734,32 +12436,32 @@ initial commit
 +T.Grid = function()
 +  local Grid = require'ds.Grid'
 +  local g = Grid{h=3, w=20}
-+    assertEq('\n\n', fmt(g))
++    T.eq('\n\n', fmt(g))
 +  g:insert(2, 2, 'hello')
-+    assertEq('\n hello\n', fmt(g))
++    T.eq('\n hello\n', fmt(g))
 +  g:insert(2, 4, ' is my friend') -- keeps 'he'
-+    assertEq('\n he is my friend\n', fmt(g))
++    T.eq('\n he is my friend\n', fmt(g))
 +
-+  g:clear(); assertEq('\n\n', fmt(g))
++  g:clear(); T.eq('\n\n', fmt(g))
 +  g:insert(1, 3, 'hi\n  bye\nfin')
-+    assertEq('  hi\n'
++    T.eq('  hi\n'
 +           ..'    bye\n'
 +           ..'  fin', fmt(g))
 +
 +  g:insert(1, 10, 'there\nthen\n!')
-+    assertEq('  hi     there\n'
++    T.eq('  hi     there\n'
 +           ..'    bye  then\n'
 +           ..'  fin    !', fmt(g))
 +
 +  g = Grid{h=3, w=20}
 +  g:insert(1, 1, {"13 5 7 9", " 2 4 6", ""})
-+    assertEq('13 5 7 9\n 2 4 6\n', fmt(g))
++    T.eq('13 5 7 9\n 2 4 6\n', fmt(g))
 +
 +  g = Grid{h=3, w=20}
 +  g:insert(2, 3, "hi")
-+    assertEq('\n  hi\n', fmt(g))
++    T.eq('\n  hi\n', fmt(g))
 +  g:insert(1, 6, "ab\ncd\nef")
-+    assertEq(
++    T.eq(
 +      '     ab\n'
 +    ..'  hi cd\n'
 +    ..'     ef', fmt(g))
@@ -12779,7 +12481,7 @@ initial commit
 
 --- /dev/null
 +++ lib/fd/Makefile
-@@ -0,0 +1,31 @@
+@@ -0,0 +1,36 @@
 +# Copy/pastable Makefile for Lua C sources.
 +
 +# Modify these for a new library
@@ -12788,8 +12490,9 @@ initial commit
 +OUT   = $(NAME)
 +LUA_VERSION = lua
 +
-+UNAME := $(shell uname)
++UNAME != uname
 +build:  $(UNAME)
++NetBSD: $(OUT).so
 +Linux:  $(OUT).so
 +Darwin: $(OUT).so
 +# Windows: $(OUT).dll
@@ -12798,6 +12501,10 @@ initial commit
 +	
 +$(OUT).so: $(FILES)
 +	make Build$(UNAME)
++
++BuildNetBSD:
++	echo "building NetBSD"
++	$(CC) $(FILES) -fPIC -O0 -g -llua -lpthread -I/usr/pkg/include/$(LUA_VERSION) -shared -o $(OUT).so
 +
 +BuildLinux: $(FILES)
 +	$(CC) $(FILES) -fPIC -l$(LUA_VERSION) -I/usr/include/$(LUA_VERSION) -shared -o $(OUT).so
@@ -12849,7 +12556,7 @@ initial commit
 
 --- /dev/null
 +++ lib/fd/fd.c
-@@ -0,0 +1,708 @@
+@@ -0,0 +1,710 @@
 +#include <stdlib.h>
 +
 +#include <stdio.h>
@@ -12961,7 +12668,9 @@ initial commit
 +  EV_INIT(fdt);
 +  luaL_setmetatable(L, LUA_FDT);
 +  if(EV_OPEN(fdt) < 0) goto error;
-+  else if (pthread_create(&fdt->th, NULL, FDT_run, (void*)fdt)) {
++  if (pthread_create(
++        &fdt->th, /*attr=*/ NULL,
++      /*start_routine=*/FDT_run, /*arg=*/(void*)fdt)) {
 +    goto error;
 +  }
 +  return fdt;
@@ -13601,7 +13310,7 @@ initial commit
 
 --- /dev/null
 +++ lib/fd/fd.lua
-@@ -0,0 +1,368 @@
+@@ -0,0 +1,373 @@
 +local G = G or _G
 +--- filedescriptor: direct control of filedescriptors.
 +--- async operations support the LAP (see lib/lap) protocol.
@@ -13883,6 +13592,7 @@ initial commit
 +end
 +M._sync.tmpfile  = function() return M.tmpfileFn(S.tmpFD)  end
 +M._async.tmpfile = function() return M.tmpfileFn(S.tmpFDT) end
++M.tmpfile = M._sync.tmpfile
 +
 +M.read    = function(...)
 +  local inp = M.input()
@@ -13948,20 +13658,24 @@ initial commit
 +  for k, v in pairs(M._sync)  do M[k] = v end
 +end)
 +
-+local IO_KEYS = [[
++local IO_KEYS = {}; for k in ([[
 +open   close  tmpfile
 +read   lines  write
 +stdout stdin
 +input  output flush
 +type
-+]]
++]]):gmatch'%w+' do push(IO_KEYS, k) end
++
 +local function copyKeysM(keys, from, to)
-+  for k in keys:gmatch'%w+' do
++  for _, k in ipairs(keys) do
 +    to[k] = assert(rawget(from, k) or M[k])
 +  end
 +end
 +copyKeysM(IO_KEYS, io, M.io)
 +
++M.ioStd = function()
++  assert(not LAP_ASYNC); copyKeysM(IO_KEYS, M.io,    io)
++end
 +M.ioSync = function()
 +  assert(not LAP_ASYNC); copyKeysM(IO_KEYS, M._sync, io)
 +end
@@ -13973,25 +13687,35 @@ initial commit
 
 --- /dev/null
 +++ lib/fd/fd/IFile.lua
-@@ -0,0 +1,96 @@
+@@ -0,0 +1,107 @@
++-- FIXME: __index / etc cannot be support for async operations
++--   since they can cause yielding across a C-boundary for
++--   things like table.move. Therefore, don't do them for
++--   these types. Instead, manually support the methods or figure
++--   somethinge else out.
 +local mty = require'metaty'
++local ds = require'ds'
++
 +--- Indexed File: supports setting and getting fixed-length values (bytes) by
 +--- index, implementing the API of a list-like table.
 +local IFile = mty'fd.IFile' {
 +  'f [file]', 'path [str]',
-+  'len [int]', '_i [int]',
++  'len [int]', '_i [int]', '_m [str]: r/w mode',
 +  'sz [int]: the size of each value',
 +}
++
 +
 +local mtype = math.type
 +local pack, unpack = string.pack, string.unpack
 +local sfmt = string.format
++local trace = require'ds.log'.trace
 +
 +local index, newindex = mty.index, mty.newindex
 +
-+--- seek to index. Invariant: [$i <= len+1]
-+local function iseek(fi, i, sz) --!!> nil
-+  if fi._i == i then return end
++--- seek to index in the "mode" m. Invariant: [$i <= len+1]
++local function iseek(fi, i, m, sz) --!!> nil
++  if fi._i == i and fi._m == m then return end
++  fi._m = m
 +  local to = (i-1) * sz
 +  local pos = assert(fi.f:seek('set', to))
 +  assert(pos % sz == 0, 'pos incorrect')
@@ -14036,7 +13760,7 @@ initial commit
 +--- Panic if there are read errors.
 +IFile.getbytes = function(fi, i) --!!> str?
 +  if i > fi.len then return end
-+  local sz = fi.sz; iseek(fi, i, sz)
++  local sz = fi.sz; iseek(fi, i, 'r', sz)
 +  local v = assert(fi.f:read(sz))
 +  assert(#v == sz, 'did not read sz bytes')
 +  fi._i = i + 1
@@ -14054,10 +13778,11 @@ initial commit
 +  local len = fi.len; assert(i <= len + 1, 'newindex OOB')
 +  local sz = fi.sz
 +  if #v ~= sz then error(sfmt('failed to write %i bytes', #v)) end
-+  iseek(fi, i, sz); assert(fi.f:write(v))
++  iseek(fi, i, 'w', sz); assert(fi.f:write(v))
 +  if i > len then fi.len = i end
 +  fi._i = i + 1
 +end
++
 +IFile.__newindex = function(fi, i, v)
 +  if type(i) == 'string' then return newindex(fi, i, v) end
 +  return fi:setbytes(i, v)
@@ -14073,122 +13798,91 @@ initial commit
 
 --- /dev/null
 +++ lib/fd/test.lua
-@@ -0,0 +1,153 @@
+@@ -0,0 +1,201 @@
 +local iotype = io.type
 +
-+local T   = require'civtest'.Test
-+local CT = require'civtest'
++local T   = require'civtest'
 +local M   = require'fd'
 +local ds = require'ds'
++local ix = require'civix'
++local ixt = require'civix.testing'
++local info = require'ds.log'.info
++
 +local S   = M.sys
-+local aeq = T.eq
++
++local io_open = io.open
++T.eq(M.io.open, io_open)
++
 +M.ioSync()
++assert(io.open ~= io_open)
 +
 +local p = '.out/fd.text'
 +
++---------------------
++-- non-general tests
++
 +T.bitops = function()
-+  aeq(0xFF00, 0xFFFF & (~0x00FF))
-+  aeq(0xF0F0, 0xFFFF & (~0x0F0F))
++  T.eq(0xFF00, 0xFFFF & (~0x00FF))
++  T.eq(0xF0F0, 0xFFFF & (~0x0F0F))
 +end
 +
 +T['open -> _write -> _read'] = function()
-+  local f = M.open(p, 'w'); aeq(0, f:code())
-+  aeq(0, f:_write'line 1\nline 2\n')
-+  f:close()
-+  f = M.open(p, 'r'); aeq(0, f:code())
-+  aeq(S.FD_EOF, f:_read())
-+  aeq('line 1\nline 2\n', f:_pop())
-+  aeq('file', M.type(f))
-+  f:flush()
-+  f:close(); aeq('closed file', M.type(f))
++  local f = M.open(p, 'w'); T.eq(0, f:code())
++  print'opened'
++  T.eq(0, f:_write'line 1\nline 2\n'); print'wrote lines'
++  f:close(); print'closed'
++  f = M.open(p, 'r'); T.eq(0, f:code()) print'opened'
++  T.eq(S.FD_EOF, f:_read()) print'read EOF'
++  T.eq('line 1\nline 2\n', f:_pop())
++  T.eq('file', M.type(f)); print'got type'
++  f:flush();              print'flushed'
++  f:close(); T.eq('closed file', M.type(f))
 +end
 +
-+CT.lapTest('read', function()
-+  local f = M.open(p, 'r'); aeq(0, f:code())
-+  aeq('line 1\nline 2\n', f:read'a'); aeq(14, f:pos())
-+  f:close()
-+end)
++--------------------
++-- General tests (sync or async with any io impl)
++local fin = false
 +
-+CT.lapTest('read line', function()
-+  local f = M.open(p, 'r')
-+  aeq('line 1',   f:read'l')
-+  aeq('line 2\n', f:read'L')
-+  aeq(nil,        f:read'l')
-+  f:close()
-+end)
++local generalTest = function()
++T.openWriteRead = function()
++  local f = assert(io.open(p, 'w'))
++  assert(f:write'line 1\nline 2\n'); f:close()
++
++  f = assert(io.open(p, 'r'))
++  T.eq('line 1\nline 2\n', f:read'a')
++  T.eq('file', M.type(f))
++  f:close();
++  for _=1,10 do
++    if M.type(f) ~= 'closed file' then ix.sleep(0.001) end
++  end
++  T.eq('closed file', M.type(f))
++end
 +
 +T.append = function()
-+  local f = M.open(p, 'a'); aeq(0, f:code())
-+  aeq(14, f:pos())
-+  f:write'line 3\n'; aeq(21, f:pos())
++  local f = assert(io.open(p, 'a'))
++  T.eq(14, f:seek'cur')
++  f:write'line 3\n'; T.eq(21, f:seek'cur')
 +end
-+CT.asyncTest('append', function()
-+  local f = M.open(p, 'a'); aeq(0, f:code())
-+  aeq(21, f:pos())
-+  f:write'line 4\n'; aeq(28, f:pos())
-+end)
 +
-+local text = 'line 1\nline 2\nline 3\nline 4\n'
-+CT.asyncTest('openFDT -> _read', function()
-+  local f = M.openFDT(p); aeq(M.FDT, getmetatable(f))
-+  aeq(0, f:code())
-+  f:_read(); while f:code() == S.FD_RUNNING do end
-+  aeq(S.FD_EOF, f:code())
-+  aeq(text, f:_pop())
++T.read = function()
++  local f = assert(io.open(p, 'r'))
++  T.eq('line 1\nline 2\nline 3\n', f:read'a')
++  T.eq(21, f:seek'cur')
 +  f:close()
-+end)
-+
-+CT.asyncTest('FDT:read', function()
-+  local f = M.openFDT(p); aeq(text, f:read'a'); f:close()
-+end)
-+
-+CT.asyncTest('FDT:lines', function()
-+  local f = M.openFDT(p)
-+  aeq('line 1',   f:read'l')
-+  aeq('line 2\n', f:read'L')
-+  aeq('line 3\n', f:read'L')
-+  aeq('line 4\n', f:read'L')
-+  aeq(nil,        f:read'l')
-+end)
-+
-+T['fileno and friends'] = function()
-+  aeq(type(io.stderr), 'userdata')
-+  assert(iotype(io.stderr))
-+  aeq(0, M.fileno(io.stdin))
-+  aeq(2, M.fileno(io.stderr))
-+  aeq(false, M.isatty(io.tmpfile()))
-+  aeq(false, M.isatty(M.tmpfile()))
-+  aeq(true,  M.isatty(io.stderr))
-+  aeq(true,  M.isatty(2))
-+
-+  aeq('chr', M.ftype(io.stdin))
-+  aeq('chr', M.ftype(io.stdout))
-+  aeq('file', M.ftype(io.tmpfile()))
-+  aeq('file', M.ftype( M.tmpfile()))
 +end
 +
-+local pipeTest = function(r, w)
-+  w:write'hi there'
-+  aeq('hi', r:read(2)); aeq(' there', r:read(6))
-+end
-+T.pip = function() pipeTest(S.pipe()) end
-+CT.asyncTest('pipe', function()
-+  local r, w = S.pipe()
-+  pipeTest(r:toNonblock(), w:toNonblock())
-+  aeq(S.EWOULDBLOCK, r:_read(1))
-+  w:write'bye'
-+  aeq('b', r:read(1)); aeq('ye', r:read(2))
-+end)
-+
-+--- testFn(openFn) is called with both file types.
-+local allFileTest = function(testFn)
-+  testFn(M.io.open)
-+  testFn(M.open)
++T.readLine = function()
++  local f = io.open(p, 'r')
++  T.eq('line 1',   f:read'l')
++  T.eq('line 2',   f:read'l')
++  T.eq('line 3\n', f:read'L')
++  T.eq(nil,        f:read'L')
++  f:close()
 +end
 +
 +--- check that both files behave the same
-+T.checkBoth = function() allFileTest(function(open)
-+  local f = open(p, 'w+')
++T.generalFile = function()
++  local f = io.open(p, 'w+')
 +  f:write'hello!'
 +    -- TODO: try read'a' here for odd results
 +    T.eq(nil, f:read());
@@ -14209,12 +13903,28 @@ initial commit
 +    T.eq('lo!', f:read(3)); T.eq(6, f:seek'cur')
 +    T.eq('',  f:read'a')
 +    T.eq(nil, f:read())
-+end) end
++end
 +
++T.fileno_and_friends = function()
++  T.eq(type(io.stderr), 'userdata')
++  assert(iotype(io.stderr))
++  T.eq(0, M.fileno(io.stdin))
++  T.eq(2, M.fileno(io.stderr))
++  T.eq(false, M.isatty(io.tmpfile()))
++  T.eq(false, M.isatty(M.tmpfile()))
++  T.eq(true,  M.isatty(io.stderr))
++  T.eq(true,  M.isatty(2))
++
++  T.eq('chr', M.ftype(io.stdin))
++  T.eq('chr', M.ftype(io.stdout))
++  -- FIXME:
++  -- T.eq('file', M.ftype(io.tmpfile()))
++end
 +
 +-- Note: most test coverage is in things that
 +-- use IFile (i.e. U3File).
 +T.IFile = function()
++  if G.LAP_ASYNC then return 'FIXME: IFile async' end
 +  local IFile = require'fd.IFile'
 +  local fi = IFile:create(1)
 +  ds.extend(fi, {'a', 'b', 'c'})
@@ -14227,6 +13937,69 @@ initial commit
 +  T.eq({'aa', 'bb', 'cc'}, ds.icopy(fi))
 +end
 +
++fin=true; end ----------------- end generalTest
++
++T.SUBNAME = '[ioStd]'; M.ioStd()
++fin=false; generalTest(); assert(fin)
++
++T.SUBNAME = '[ioSync]'; M.ioSync()
++fin=false; generalTest(); assert(fin)
++
++T.SUBNAME = ''
++
++---------------------
++-- Targeted tests (async)
++local pipeTest = function(r, w)
++  w:write'hi there'
++  T.eq('hi', r:read(2)); T.eq(' there', r:read(6))
++end
++
++T.pipe = function() pipeTest(S.pipe()) end
++
++fin = 0
++ixt.runAsyncTest(function()
++T.pipe_async = function()
++  local r, w = S.pipe()
++  pipeTest(r:toNonblock(), w:toNonblock())
++  T.eq(S.EWOULDBLOCK, r:_read(1))
++  w:write'bye'
++  T.eq('b', r:read(1)); T.eq('ye', r:read(2))
++  fin = fin + 1
++end
++
++local text = 'line 1\nline 2\nline 3\nline 4\n'
++T.FDT_write = function()
++  local f = assert(M.openFDT(p, 'w')); info'opened'
++  T.eq(M.FDT, getmetatable(f))
++  T.eq(0, f:code())
++  assert(f:write(text))
++  f:close()
++  fin = fin + 1
++end
++
++T.FDT_read = function()
++  info'started test'
++  local f = assert(M.openFDT(p)); info'opened'
++  T.eq(M.FDT, getmetatable(f))
++  T.eq(0, f:code())
++  f:_read(); info'started read'
++  while f:code() == S.FD_RUNNING do end
++  T.eq(S.FD_EOF, f:code())
++  T.eq(text, f:_pop())
++  f:close()
++  fin = fin + 1
++end
++end) -------------- runAsyncTest
++T.eq(3, fin)
++
++--- Now run the general test in async mode
++T.SUBNAME = '[ioAsync]'
++fin=false
++ixt.runAsyncTest(generalTest)
++assert(fin)
++
++T.SUBNAME = ''
++M.ioStd()
 
 --- /dev/null
 +++ lib/fmt/PKG.lua
@@ -14234,7 +14007,7 @@ initial commit
 +name     = 'fmt'
 +version  = '0.1-0'
 +url      = 'git+http://github.com/civboot/civlua'
-+summary  = "format lua types"
++summary  = "format and style anything"
 +homepage = "https://lua.civboot.org#Package_fmt"
 +license  = "UNLICENSE"
 +deps = {
@@ -14249,25 +14022,48 @@ initial commit
 
 --- /dev/null
 +++ lib/fmt/README.cxt
-@@ -0,0 +1,18 @@
-+[{h1}fmt module: format and style lua types]
+@@ -0,0 +1,41 @@
++[{h1}fmt module: format and style anything]
 +
-+API / Architecture: [+
-+* [$metaty] (or any other type library) defines types and sets [$__fields] on
-+  the metatable.
-+* [$fmt.Fmt] defines the formatter which has methods/settings: [+
-+  * [$to [file|Styler]]: where to write to. Default is to push to self,
-+    treating Fmt as a list of strings.
-+  * [$style [boolean]] to enable/disable styling. Set to [$true] if [$to=styler]
-+    AND you want color/etc.
-+  * [$__call(f, v)]: call with any value to use [$__fmt] method or default.
-+  * [$__newindex(k, v)]: [$push(f, str)] like a normal table of strings.
-+  * [$write(...)]: write like a normal file
-+  * [$styled(style, text, ...)]: style [$text] and [$write(...)] using a
-+    provided styler (i.e. [$asciicolor.style.Styler])
-+  * [$level(add)] to increase/decrease the indentation level.
-+  ]
++The fmt module is a small (~200 lines of code) module which formats arbitrary
++lua types as well as enables users to define formatting for their own
++[<#Package_metaty>metatypes] via the [$function __fmt(self, fmter)] method.
++
++It also provides several helper methods such as [$print], [$assertf] and
++[$errorf], making it more convienent to print or format types. In addition, it
++sets [$io.fmt = io.fmt or Fmt{to=io.stderr}], providing a default hook for
++[<#ds.log>] and command line utilities to write formatted text to.
++
++The [<#fmt.Fmt>] interface (which is passed to a metaty's [$__fmt] method if
++present) accepts both [$write] (like a file) and
++[$styled("style", "styled text", ..."non-styled text")], enabling the
++[<$Package_asciicolor>asciicolor] library (or your own library!) to provide
++user-configurable colors for specific styles which integrate with the
++[<#Package_vt100>vt100] library and the [<#Package_cxt>cxt] libraries. This
++is used throughout civlua to provide user-configurable (and optional) color
++to the terminal, web-pages and the civlua editor.
++
++[{h2}API / Architecture]
++
++[<#fmt.Fmt>] defines the formatter which has methods/settings: [+
++* [$to [file|Styler]] (argument): where to write to. Default is to push to
++  self, treating Fmt as a list of strings (which you can call [$table.concat]
++  on).
++
++* [$style [boolean]] to enable/disable styling. Set to [$true] if [$to=styler]
++  AND you want color/etc.
++
++* [$__call(f, v)]: call with any value to use [$__fmt] method or default.
++
++* [$write(...)]: write like a normal file
++
++* [$styled(style, text, ...)]: style [$text] and [$write(...)] using a
++  provided styler (i.e. [<#asciicolor.style.Styler])
++
++* [$level(add)] to increase/decrease the indentation level.
 +]
++
++See the documentation of each function for more details.
 
 --- /dev/null
 +++ lib/fmt/binary.lua
@@ -14375,7 +14171,7 @@ initial commit
 
 --- /dev/null
 +++ lib/fmt/fmt.lua
-@@ -0,0 +1,260 @@
+@@ -0,0 +1,297 @@
 +local G = G or _G
 +
 +--- format module: format any type into a readable string
@@ -14383,16 +14179,20 @@ initial commit
 +
 +local mty = require'metaty'
 +
++local getmt = getmetatable
 +local sfmt, srep = string.format, string.rep
-+local add, concat = table.insert, table.concat
++local push, concat = table.insert, table.concat
 +local sort = table.sort
 +local mathtype = math.type
 +local sconcat = string.concat
++local split = mty.split
++
 +
 +local DEPTH_ERROR = '{!max depth reached!}'
 +
-+--- for comparing two (possibly) different types
-+--- [$nil < bool < number < string < table]
++--- Compares two values of any type.
++---
++--- Note: [$nil < bool < number < string < table]
 +M.cmpDuck = function(a, b)
 +  local aTy, bTy = type(a), type(b)
 +  if aTy ~= bTy then return aTy < bTy end
@@ -14409,20 +14209,25 @@ initial commit
 +]], '%w+') do M.KEYWORD[kw] = true end
 +local KEYWORD = M.KEYWORD
 +
-+
-+-- TODO: move this over here
-+local split = mty.split
-+
-+M.sortKeys = function(t)
++--- Return a list of the table's keys sorted using [$cmpDuck]
++M.sortKeys = function(t) --> list
 +  local len, keys = #t, {}
 +  for k, v in pairs(t) do
 +    if not (mathtype(k) == 'integer' and (1 <= k) and (k <= len)) then
-+      add(keys, k)
++      push(keys, k)
 +    end
 +  end; sort(keys, cmpDuck)
 +  return keys
 +end
 +
++--- The Fmt formatter object.
++---
++--- This is the main API of this module. It enables formatting any
++--- type by simply calling it's instance, appending the result to [$f] (i.e.
++--- self) or (if present) writing the result to [$f.to].
++---
++--- If [$f.to] is not provided, you can get the resulting string by calling
++--- [$tostring(f)]
 +M.Fmt = mty'Fmt' {
 +  'style     [bool]: enable styling. If true, set [$to=Styler]',
 +  "to        [file?]: if set calls write",
@@ -14445,6 +14250,8 @@ initial commit
 +}
 +local Fmt = M.Fmt
 +
++--- Create a new Formatter object with default "pretty" settings.
++--- Generally, this means line-separated and indented tables.
 +Fmt.pretty = function(F, t)
 +  t.tableStart = t.tableStart or '{\n'
 +  t.tableEnd   = t.tableEnd   or '\n}'
@@ -14454,7 +14261,7 @@ initial commit
 +  return F(t)
 +end
 +
-+--- add to the indent level and get the new value
++--- Add to the indent level and get the new value
 +--- call with [$add=nil] to just get the current level
 +Fmt.level = function(f, add) --> int: current level
 +  local l = f._level
@@ -14469,6 +14276,7 @@ initial commit
 +Fmt._write = function(f, str)
 +  if f.to then f.to:write(str) else rawset(f, #f + 1, str) end
 +end
++--- Same as [$file:write].
 +Fmt.write = function(f, ...)
 +  local str = sconcat('', ...)
 +  local doIndent = false
@@ -14477,6 +14285,10 @@ initial commit
 +    f:_write(line); doIndent = true
 +  end
 +end
++
++--- Call [$to:styled(...)] if it is enabled, else simply [$f:write(text, ...)].
++--- This allows for configurable styling of output, both for objects as well
++--- as command-line utilities/etc.
 +Fmt.styled = function(f, style, text, ...)
 +  if not f.style then f:write(text, ...); return end
 +  local to, doIndent = f.to, false
@@ -14490,49 +14302,71 @@ initial commit
 +    to:write(line); doIndent = true
 +  end
 +end
-+Fmt.__newindex = function(f, i, v)
-+  if type(i) ~= 'number' then; assert(f.__fields[i], i)
-+    return rawset(f, i, v)
-+  end
-+  assert(i == #f + 1, 'can only append to Fmt')
-+  f:write(v)
++
++Fmt.__newindex = function(f, k, v)
++  assert(type(k) == 'string', 'cannot set Fmt index')
++  return rawset(f, k, v)
 +end
 +
++--- Format like a table key. This can be overriden by type extensions to
++--- provide other behavior.
 +Fmt.tableKey = function(f, k)
 +  if type(k) ~= 'string' or KEYWORD[k]
 +     or tonumber(k) or k:find'[^_%w]' then
-+    add(f, '[');
-+    if type(k) == 'string' then add(f, sfmt('%q', k)) else f(k) end
-+    add(f, ']')
-+  else add(f, k) end
++    f:styled('meta', '[')
++    if type(k) == 'string' then f:styled('string', sfmt('%q', k))
++    else                        f(k) end
++    f:styled('meta', ']', '')
++  else f:styled('key', k, '') end
 +end
 +
-+Fmt['nil']      = function(f)     add(f, 'nil')             end
-+Fmt.boolean     = function(f, b)  add(f, tostring(b))       end
-+Fmt.number      = function(f, n)  add(f, sfmt(f.numfmt, n)) end
-+Fmt.string      = function(f, s)  add(f, sfmt(f.strfmt, s)) end
-+Fmt.thread      = function(f, th) add(f, tostring(th))      end
-+Fmt.userdata    = function(f, ud) add(f, tostring(ud))      end
-+Fmt['function'] = function(f, fn) add(f, sfmt('fn%q[%s]', mty.fninfo(fn))) end
++--- format a nil value.
++Fmt['nil']      = function(f)
++  f:styled('literal', 'nil', '')
++end
++--- format a boolean value.
++Fmt.boolean     = function(f, b)
++  f:styled('literal', tostring(b), '')
++end
++--- format a number value.
++Fmt.number      = function(f, n)
++  f:styled('number', sfmt(f.numfmt, n), '')
++end
++--- format a string value.
++Fmt.string      = function(f, s)
++  f:styled('string', sfmt(f.strfmt, s), '')
++end
++--- format a thread value.
++Fmt.thread      = function(f, th)
++  f:styled('literal', tostring(th), '')
++end
++--- format a userdata value.
++Fmt.userdata    = function(f, ud)
++  f:styled('literal', tostring(ud), '')
++end
++--- format a function value.
++Fmt['function'] = function(f, fn)
++  f:styled('path', sfmt('fn%q[%s]', mty.fninfo(fn)), '')
++end
 +
 +--- format items in table "list"
 +Fmt.items = function(f, t, hasKeys, listEnd)
 +  local len = #t; for i=1,len do
 +    f(t[i])
-+    if (i < len) or hasKeys then add(f, f.indexEnd) end
++    if (i < len) or hasKeys then f:write(f.indexEnd) end
 +  end
-+  if listEnd then add(f, listEnd) end
++  if listEnd then f:write(listEnd) end
 +end
 +
 +--- format key/vals in table "map"
 +Fmt.keyvals = function(f, t, keys)
 +  local klen, kset, kend = #keys, f.keySet, f.keyEnd
 +  for i, k in ipairs(keys) do
-+    f:tableKey(k); add(f, kset);
++    f:tableKey(k); f:write(kset)
 +    local v = t[k]
-+    if rawequal(t, v) then add(f, 'self')
++    if rawequal(t, v) then f:styled('keyword', 'self', '')
 +    else                   f(v) end
-+    if i < klen then add(f, kend) end
++    if i < klen then f:styled('meta', kend, '') end
 +  end
 +end
 +
@@ -14540,25 +14374,24 @@ initial commit
 +--- Yes this is complicated. No, there is no way to really improve
 +--- this while preserving the features.
 +Fmt.table = function(f, t)
-+  if f._level >= f.maxIndent then return add(f, DEPTH_ERROR) end
-+  local mt, keys = getmetatable(t), nil
++  if f._level >= f.maxIndent then return f:write(DEPTH_ERROR) end
++  local mt = getmt(t)
 +  if (mt ~= 'table') and (type(mt) == 'string') then
-+    return add(f, tostring(t))
++    return f:write(tostring(t))
 +  end
 +  if type(mt) == 'table' then
 +    local fn = rawget(mt, '__fmt'); if fn then return fn(t, f) end
-+    fn = rawget(mt, '__tostring');  if fn then return add(f, fn(t)) end
-+    local n = rawget(mt, '__name'); if n  then add(f, n)       end
-+    keys = rawget(mt, '__fields')
++    fn = rawget(mt, '__tostring');  if fn then return f:write(fn(t)) end
++    local name = rawget(mt, '__name'); if name then f:write(name) end
 +  end
-+  keys = keys or M.sortKeys(t)
++  local keys = M.sortKeys(t)
 +  local multi = #t + #keys > 1 -- use multiple lines
 +  f:level(1)
-+  if multi then add(f, f.tableStart) else add(f, '{') end
++  f:write(multi and f.tableStart or '{')
 +  f:items(t, next(keys), multi and (#t>0) and (#keys>0) and f.listEnd)
 +  f:keyvals(t, keys)
 +  f:level(-1)
-+  if multi then add(f, f.tableEnd) else add(f, '}') end
++  f:write(multi and f.tableEnd or '}')
 +end
 +Fmt.__call = function(f, v) f[type(v)](f, v); return f end
 +
@@ -14582,7 +14415,7 @@ initial commit
 +Fmt.concat = function(f, sep, ...) --> f
 +  f(select(1, ...))
 +  for i=2,select('#', ...) do
-+    add(f, sep); f(select(i, ...))
++    f:write(sep); f(select(i, ...))
 +  end
 +  return f
 +end
@@ -14634,54 +14467,65 @@ initial commit
 +M.pretty = function(v) return concat(Fmt:pretty{}(v)) end --> string
 +
 +--- directly call fmt for better [$tostring]
-+getmetatable(M).__call = function(_, v) return concat(Fmt{}(v)) end
++getmt(M).__call = function(_, v) return concat(Fmt{}(v)) end
 +return M
 
 --- /dev/null
-+++ lib/fmt/test.lua
-@@ -0,0 +1,74 @@
++++ lib/fmt/show.lua
+@@ -0,0 +1,9 @@
++MAIN={}; require'civ'.setupFmt()
 +
-+local T = require'civtest'.Test
-+local CT = require'civtest'
++io.fmt {
++  string='this is a string',
++  int = 442,
++  bool=true,
++  fn=function() end,
++  [42]='the answer',
++}
+
+--- /dev/null
++++ lib/fmt/test.lua
+@@ -0,0 +1,72 @@
++
++local T = require'civtest'
 +local mty = require'metaty'
 +local M = require'fmt'
 +local fmt = M
-+local assertEq, assertMatch = T.eq, CT.assertMatch
 +
 +T.tostring = function()
-+  assertEq('"a123"',    fmt("a123"))
-+  assertEq('"123"',     fmt("123"))
-+  assertEq('"abc def"', fmt("abc def"))
-+  assertEq('423',       fmt(423))
-+  assertEq('1A',        M.tostring(26, M.Fmt{numfmt='%X'}))
-+  assertEq('true',      fmt(true))
-+  assertMatch('fn"fmt.errorf"%[.*/fmt%.lua:%d+%]', fmt(M.errorf))
-+  assertMatch('{hi=4}', fmt{hi=4})
-+  assertMatch('{hi=4}',
++  T.eq('"a123"',    fmt("a123"))
++  T.eq('"123"',     fmt("123"))
++  T.eq('"abc def"', fmt("abc def"))
++  T.eq('423',       fmt(423))
++  T.eq('1A',        M.tostring(26, M.Fmt{numfmt='%X'}))
++  T.eq('true',      fmt(true))
++  T.matches('fn"fmt.errorf"%[.*/fmt%.lua:%d+%]', fmt(M.errorf))
++  T.matches('{hi=4}', fmt{hi=4})
++  T.matches('{hi=4}',
 +    fmt(setmetatable({hi=4}, {}))
 +  )
 +end
 +
 +T.fmt = function()
-+  assertEq("{1, 2, 3}", M.tostring{1, 2, 3})
++  T.eq("{1, 2, 3}", M.tostring{1, 2, 3})
 +
 +  local t = {1, 2}; t[3] = t
-+  assertMatch('{!max depth reached!}',    M.tostring(t))
++  T.matches('{!max depth reached!}',    M.tostring(t))
 +
-+  assertEq( [[{baz="boo", foo="bar"}]],
++  T.eq( [[{baz="boo", foo="bar"}]],
 +    M.tostring{foo="bar", baz="boo"})
 +  local result = M.tostring({a=1, b=2, c=3}, M.Fmt:pretty{})
-+  assertEq('{\n  a=1,\n  b=2,\n  c=3\n}', result)
-+  assertEq('{1, 2, a=12}', M.tostring{1, 2, a=12})
-+  assertEq('{["a b"]=5}', M.tostring{['a b'] = 5})
-+  assertEq('{\n  1, 2, \n  a=12\n}',
++  T.eq('{\n  a=1,\n  b=2,\n  c=3\n}', result)
++  T.eq('{1, 2, a=12}', M.tostring{1, 2, a=12})
++  T.eq('{["a b"]=5}', M.tostring{['a b'] = 5})
++  T.eq('{\n  1, 2, \n  a=12\n}',
 +           M.tostring({1, 2, a=12}, M.Fmt:pretty{}))
 +end
 +
 +T.format = function()
-+  assertEq('hi "Bob"! Goodbye',
++  T.eq('hi "Bob"! Goodbye',
 +    M.format('hi %q! %s', 'Bob', 'Goodbye'))
-+  assertEq('running point: {x=3, y=7}...',
++  T.eq('running point: {x=3, y=7}...',
 +    M.format('%s point: %q...', 'running', {x=3, y=7}))
 +end
 +
@@ -14691,8 +14535,8 @@ initial commit
 +    'b1[number]', 'b2[number] (default=32)',
 +    'a[A]'
 +  }
-+  assertEq('A{a2=5, a1="hi"}', fmt(A{a1='hi', a2=5}))
-+  assertEq('B{b1=5, b2=7, a=A{a2=4, a1="hi"}}', fmt(B{
++  T.eq('A{a2=5, a1="hi"}', fmt(A{a1='hi', a2=5}))
++  T.eq('B{b1=5, b2=7, a=A{a2=4, a1="hi"}}', fmt(B{
 +    b1=5, b2=7, a=A{a1='hi', a2=4},
 +  }))
 +end
@@ -14861,7 +14705,7 @@ initial commit
 
 --- /dev/null
 +++ lib/lap/lap.lua
-@@ -0,0 +1,412 @@
+@@ -0,0 +1,418 @@
 +local G = G or _G
 +
 +--- superpower your libraries run either sync or async
@@ -14891,11 +14735,17 @@ initial commit
 +G.LAP_CORS      = G.LAP_CORS or ds.WeakKV{}
 +G.LAP_ASYNC     = G.LAP_ASYNC or false
 +
++M.reset = function()
++  assert(not LAP_ASYNC, "don't clear while still running")
++  G.LAP_READY, G.LAP_TRACE = {}, {}
++  G.LAP_CORS = ds.WeakKV{}
++end
++
 +M.formatCorErrors = function(corErrors)
 +  local f = fmt.Fmt{}
 +  for i, ce in ipairs(corErrors) do
-+    push(f, sfmt('Coroutine Error #%s:\n', i))
-+    f(ce); push(f, '\n')
++    f:write(sfmt('Coroutine Error #%s:\n', i))
++    f(ce); f:write'\n'
 +  end
 +  return table.concat(f)
 +end
@@ -14993,8 +14843,8 @@ initial commit
 +M.Recv.__call = M.Recv.recv
 +--- drain the recv. This does NOT wait for new items.
 +M.Recv.drain = function(r) return r.deq:drain() end
-+M.Recv.__fmt = function(r, fmt)
-+  push(fmt, ('Recv{%s len=%s hasSender=%s}'):format(
++M.Recv.__fmt = function(r, f)
++  f:write(sfmt('Recv{%s len=%s hasSender=%s}',
 +    r:isClosed() and 'closed' or 'active',
 +    #r.deq, r:hasSender() and 'yes' or 'no'))
 +end
@@ -15044,7 +14894,7 @@ initial commit
 +  local r = send._recv; return r and #r or 0
 +end
 +M.Send.__fmt = function(send, f)
-+  push(f, ('Send{active=%s}'):format(send:isClosed() and 'no' or 'yes'))
++  f:write('Send{active=%s}', send:isClosed() and 'no' or 'yes')
 +end
 +
 +----------------------------------
@@ -15277,11 +15127,10 @@ initial commit
 
 --- /dev/null
 +++ lib/lap/test.lua
-@@ -0,0 +1,65 @@
+@@ -0,0 +1,83 @@
 +METATY_CHECK = true
 +
-+local CT = require'civtest'
-+local T = CT.Test
++local T = require'civtest'
 +local mty = require'metaty'
 +local ds = require'ds'
 +local M  = require'lap'
@@ -15289,7 +15138,34 @@ initial commit
 +local push, yield = table.insert, coroutine.yield
 +local co = coroutine
 +
-+CT.asyncTest('schedule', function()
++T.execute = function()
++  local l = M.Lap{}
++  local v = 0
++  local res = l:execute(co.create(
++    function() v = 3; yield'forget' end
++  ))
++  T.eq(3, v)
++  T.eq(nil, res)
++  local res = l:execute(co.create(
++    function() yield'foo' end
++  ))
++  T.eq('unknown kind: foo', res)
++
++  local errFn = function() error'bar' end
++  local res = l:execute(co.create(errFn))
++  T.matches(': bar', res)
++end
++
++local finished = 0
++local slept, mono = 0, 0
++local l = M.Lap {
++  sleepFn=function() slept = slept + 1 end,
++  monoFn=function() mono = mono + 1; return mono end,
++  pollList=ds.nosupport,
++}
++
++local _, errors = l:run{function()
++T.schedule =  function()
 +  local i = 0
 +  local cor = M.schedule(function()
 +    for _=1,3 do i = i + 1; yield(true) end
@@ -15302,9 +15178,10 @@ initial commit
 +  end
 +  T.eq(nil, LAP_READY[cor])
 +  T.eq(99, i)
-+end)
++  finished = finished + 1
++end
 +
-+CT.asyncTest('ch', function()
++T.ch = function()
 +  local r = M.Recv(); local s = r:sender()
 +
 +  local t = {}
@@ -15323,26 +15200,17 @@ initial commit
 +  ds.clear(t)
 +  s(13); T.eq({13}, r:drain())
 +  yield(true); T.eq({}, t)
-+end)
-+
-+T.execute = function()
-+  local l = M.Lap{}
-+  local v = 0
-+  local res = l:execute(co.create(
-+    function() v = 3; yield'forget' end
-+  ))
-+  T.eq(3, v)
-+  T.eq(nil, res)
-+  local res = l:execute(co.create(
-+    function() yield'foo' end
-+  ))
-+  T.eq('unknown kind: foo', res)
-+
-+  local errFn = function() error'bar' end
-+  local res = l:execute(co.create(errFn))
-+  CT.assertMatch(': bar', res)
++  finished = finished + 1
 +end
++end} -- end l:run
 +
++if errors then error('lap found errors:\n'..fmt(errors)) end
++assert(l:isDone())
++T.eq(2, finished)
++M.reset()
++
++-- note: update when necessary. These just prove determinism
++T.eq(9, slept); T.eq(9, mono)
 
 --- /dev/null
 +++ lib/lines/PKG.lua
@@ -16105,10 +15973,10 @@ initial commit
 +  idx[i], cache[i] = pos, v
 +end
 +
-+File.__fmt = function(lf, fmt)
-+  push(fmt, 'lines.File(')
-+  if lf.path then push(fmt, lf.path) end
-+  push(fmt, ')')
++File.__fmt = function(lf, f)
++  f:write'lines.File('
++  if lf.path then f:write(lf.path) end
++  f:write')'
 +end
 +
 +File.reader = function(lf) --> lines.File (readonly)
@@ -16124,7 +15992,7 @@ initial commit
 
 --- /dev/null
 +++ lib/lines/lines/Gap.lua
-@@ -0,0 +1,117 @@
+@@ -0,0 +1,115 @@
 +local mty = require'metaty'
 +--- line-based gap buffer. The buffer is composed of two lists (stacks) of
 +--- lines [+
@@ -16175,12 +16043,10 @@ initial commit
 +Gap.__fmt = function(g, f)
 +  local len = #g
 +  for i, l in ipairs(g.bot) do
-+    push(f, l);
-+    if i < len then push(f, '\n') end
++    f:write(l); if i < len then f:write'\n' end
 +  end
 +  for i=#g.top,1,-1 do
-+    push(f, g.top[i]);
-+    if i > 1 then push(f, '\n') end
++    f:write(g.top[i]); if i > 1 then f:write'\n' end
 +  end
 +end
 +Gap.__pairs = ipairs
@@ -16933,14 +16799,13 @@ initial commit
 
 --- /dev/null
 +++ lib/lines/lines/testing.lua
-@@ -0,0 +1,119 @@
+@@ -0,0 +1,118 @@
 +--- testing helpers for ds related data structures
 +local M = mod and mod'lines.testing' or {}
 +
 +local T = require'civtest'
 +local mty = require'metaty'
 +local fmt = require'fmt'
-+local assertEq = T.assertEq
 +local ds, lines = require'ds', require'lines'
 +local log = require'ds.log'
 +M.DATA = {}
@@ -16948,9 +16813,9 @@ initial commit
 +--- test round-trip offset
 +local function offsetRound(t, l, c, off, expect, expectOff)
 +  local l2, c2 = lines.offset(t, off, l, c)
-+  T.assertEq(expect, {l2, c2})
++  T.eq(expect, {l2, c2})
 +  local res = lines.offsetOf(t, l, c, l2, c2)
-+  T.assertEq(expectOff or off, res)
++  T.eq(expectOff or off, res)
 +end
 +M.DATA.offset = '12345\n6789\n'
 +M.testOffset = function(t)
@@ -16959,7 +16824,7 @@ initial commit
 +  offsetRound(t, 1, 2, 1,   {1, 3})
 +  offsetRound(t, 1, 3, -1,  {1, 2})
 +  offsetRound(t, 1, 2, -1,  {1, 1})
-+  T.assertEq({1, 1}, {lines.offset(t, -1, 1, 1)})
++  T.eq({1, 1}, {lines.offset(t, -1, 1, 1)})
 +
 +  -- here
 +  offsetRound(t, 1, 1, 3,   {1, 4})
@@ -16993,8 +16858,8 @@ initial commit
 +--- lines to create a new object (does NOT need to be copied)
 +--- called for various data structures which implement lines
 +M.testLinesRemove = function(new, assertEq, assertEqRemove)
-+  local assertEqR = assertEqRemove or T.assertEq
-+  local assertEq = assertEq or T.assertEq
++  local assertEqR = assertEqRemove or T.eq
++  local assertEq = assertEq or T.eq
 +  local t = new''
 +  lines.inset(t, 'foo bar', 1, 0)
 +  assertEqR({'o b'}, lines.remove(t, 1, 3, 1, 5))
@@ -17063,7 +16928,7 @@ initial commit
 +local ds = require'ds'
 +local testing = require'lines.testing'
 +local Gap = require'lines.Gap'
-+local T = require'civtest'.Test
++local T = require'civtest'
 +
 +T.new = function()
 +  T.eq({'one', 'two 2', ''}, lines'one\ntwo 2\n')
@@ -17262,115 +17127,115 @@ initial commit
 +
 +local mty = require'metaty'
 +local fmt = require'fmt'
-+local test, assertEq; require'ds'.auto'civtest'
++local T = require'civtest'
 +
 +local buffer = require'lines.buffer'
 +
 +local Buffer = buffer.Buffer
 +local C, CS = buffer.Change, buffer.ChangeStart
 +
-+test('undoIns', function()
++T.undoIns = function()
 +  local b = Buffer.new(''); local g = b.dat
 +
 +  local ch1 = C{k='ins', s='hello ', l=1, c=1}
 +  local ch2 = C{k='ins', s='world!', l=1, c=7}
 +  b:changeStart(0, 0)
 +  local ch = b:insert('hello ', 1, 2)
-+  assertEq(ch1, ch)
-+  assertEq('hello ', fmt(g))
++  T.eq(ch1, ch)
++  T.eq('hello ', fmt(g))
 +
 +  b:changeStart(0, 1)
 +  ch = b:insert('world!', 1, 7)
-+  assertEq(ch2, ch)
-+  assertEq('hello world!', fmt(g))
++  T.eq(ch2, ch)
++  T.eq('hello world!', fmt(g))
 +
 +  -- undo + redo + undo again
 +  local chs = b:undo()
-+  assertEq({CS{l1=0, c1=1}, ch2}, chs)
-+  assertEq('hello ', fmt(g))
++  T.eq({CS{l1=0, c1=1}, ch2}, chs)
++  T.eq('hello ', fmt(g))
 +
 +  chs = b:redo()
-+  assertEq({CS{l1=0, c1=1}, ch2}, chs)
-+  assertEq('hello world!', fmt(g))
++  T.eq({CS{l1=0, c1=1}, ch2}, chs)
++  T.eq('hello world!', fmt(g))
 +
 +  chs = b:undo()
-+  assertEq({CS{l1=0, c1=1}, ch2}, chs)
-+  assertEq('hello ', fmt(g))
++  T.eq({CS{l1=0, c1=1}, ch2}, chs)
++  T.eq('hello ', fmt(g))
 +
 +  -- undo final, then redo twice
 +  chs = b:undo()
-+  assertEq({CS{l1=0, c1=0}, ch1}, chs)
-+  assertEq('', fmt(g))
++  T.eq({CS{l1=0, c1=0}, ch1}, chs)
++  T.eq('', fmt(g))
 +  b:redo(); chs = b:redo()
-+  assertEq({CS{l1=0, c1=1}, ch2}, chs)
-+  assertEq('hello world!', fmt(g))
-+end)
++  T.eq({CS{l1=0, c1=1}, ch2}, chs)
++  T.eq('hello world!', fmt(g))
++end
 +
-+test('undoInsRm', function()
++T.undoInsRm = function()
 +  local b = Buffer.new(''); local g, ch = b.dat
 +  local ch1 = C{k='ins', s='12345\n', l=1, c=1}
 +  local ch2 = C{k='rm', s='12', l=1, c=1}
 +  b:changeStart(0, 0)
-+  ch = b:insert('12345\n', 1, 2); assertEq(ch1, ch)
++  ch = b:insert('12345\n', 1, 2); T.eq(ch1, ch)
 +
 +  b:changeStart(0, 1)
-+  ch = b:remove(1, 1, 1, 2);      assertEq(ch2, ch)
-+  assertEq('345\n', fmt(g))
++  ch = b:remove(1, 1, 1, 2);      T.eq(ch2, ch)
++  T.eq('345\n', fmt(g))
 +
-+  ch = b:undo()[2]                assertEq(ch2, ch)
-+  assertEq('12345\n', fmt(g))
++  ch = b:undo()[2]                T.eq(ch2, ch)
++  T.eq('12345\n', fmt(g))
 +
-+  ch = b:redo()[2]                assertEq(ch2, ch)
-+  assertEq('345\n', fmt(g))
-+end)
++  ch = b:redo()[2]                T.eq(ch2, ch)
++  T.eq('345\n', fmt(g))
++end
 +
-+test('undoReal', function() -- undo/redo word deleting
++T.undoReal = function() -- undo/redo word deleting
 +  local START = "4     It's nice to have some real data"
 +  local b = Buffer.new(START); local g, ch = b.dat
 +  local ch1 = C{k='rm', s='It',  l=1, c=7}
 +  local ch2 = C{k='rm', s="'",   l=1, c=7}
 +  local ch3 = C{k='rm', s="'s ", l=1, c=7}
 +  b:changeStart(0, 0)
-+  ch = b:remove(1, 7, 1, 8); assertEq(ch1, ch)
-+  assertEq("4     's nice to have some real data", fmt(g))
-+  ch = b:remove(1, 7, 1, 7); assertEq(ch2, ch)
-+  assertEq("4     s nice to have some real data", fmt(g))
++  ch = b:remove(1, 7, 1, 8); T.eq(ch1, ch)
++  T.eq("4     's nice to have some real data", fmt(g))
++  ch = b:remove(1, 7, 1, 7); T.eq(ch2, ch)
++  T.eq("4     s nice to have some real data", fmt(g))
 +
-+  local chs = b:undo();      assertEq({CS{l1=0, c1=0}, ch1, ch2}, chs)
-+  assertEq("4     It's nice to have some real data", fmt(g))
-+  ch = b:redo();             assertEq({CS{l1=0, c1=0}, ch1, ch2}, chs)
-+  assertEq("4     s nice to have some real data", fmt(g))
-+end)
++  local chs = b:undo();      T.eq({CS{l1=0, c1=0}, ch1, ch2}, chs)
++  T.eq("4     It's nice to have some real data", fmt(g))
++  ch = b:redo();             T.eq({CS{l1=0, c1=0}, ch1, ch2}, chs)
++  T.eq("4     s nice to have some real data", fmt(g))
++end
 +
-+test('undoMulti', function() -- undo/redo across multi lines
++T.undoMulti = function() -- undo/redo across multi lines
 +  local START = '123\n456\n789\nabc'
 +  local b = Buffer.new(START); local g, ch = b.dat
-+  assertEq(START, fmt(g))
++  T.eq(START, fmt(g))
 +  local ch1 = C{k='rm', s='\n', l=1, c=4}
 +  local ch2 = C{k='rm', s='\n', l=1, c=7}
 +  b:changeStart(0, 0)
-+  ch = b:remove(1, 4, 1, 4); assertEq(ch1, ch)
-+  assertEq('123456\n789\nabc', fmt(g))
++  ch = b:remove(1, 4, 1, 4); T.eq(ch1, ch)
++  T.eq('123456\n789\nabc', fmt(g))
 +  b:changeStart(0, 0)
-+  ch = b:remove(1, 7, 1, 7); assertEq(ch2, ch)
-+  assertEq('123456789\nabc', fmt(g))
++  ch = b:remove(1, 7, 1, 7); T.eq(ch2, ch)
++  T.eq('123456789\nabc', fmt(g))
 +
-+  ch = b:undo()[2]                assertEq(ch2, ch)
-+  assertEq('123456\n789\nabc', fmt(g))
++  ch = b:undo()[2]                T.eq(ch2, ch)
++  T.eq('123456\n789\nabc', fmt(g))
 +
-+  ch = b:undo()[2]                assertEq(ch1, ch)
-+  assertEq(START, fmt(g))
-+end)
++  ch = b:undo()[2]                T.eq(ch1, ch)
++  T.eq(START, fmt(g))
++end
 
 --- /dev/null
 +++ lib/lines/test_diff.lua
-@@ -0,0 +1,137 @@
+@@ -0,0 +1,135 @@
 +local mty = require'metaty'
 +local ds = require'ds'
 +local Iter = require'ds.Iter'
 +local fmt = require'fmt'
 +local lines = require'lines'
-+local T = require'civtest'.Test
++local T = require'civtest'
 +local Keep, Change, toChanges; ds.auto'vcds'
 +local add, concat = table.insert, table.concat
 +local diff = require'lines.diff'
@@ -17412,8 +17277,6 @@ initial commit
 +  local linesB = ds.splitList'slits gil david    a   electric faust sonics sonics'
 +
 +  local res = diff.Diff(linesA, linesB)
-+  fmt.print('!! Formatted'); fmt.print(res)
-+
 +  local matches = {uniqueMatches(linesA, linesB)}
 +  T.eq({
 +    {1, 2, 3, 4, 5, 6},
@@ -17505,12 +17368,13 @@ initial commit
 
 --- /dev/null
 +++ lib/lines/test_file.lua
-@@ -0,0 +1,259 @@
+@@ -0,0 +1,260 @@
 +local mty = require'metaty'
 +local fmt = require'fmt'
 +local ds = require'ds'
 +local pth = require'ds.path'
-+local test, assertEq, assertMatch, assertErrorPat; ds.auto'civtest'
++
++local T = require'civtest'
 +local lines = require'lines'
 +local testing = require'lines.testing'
 +local U3File  = require'lines.U3File'
@@ -17532,117 +17396,117 @@ initial commit
 +  return t
 +end
 +
-+test('U3File', function()
++T.U3File = function()
 +  local u = U3File:create()
 +  u[1] = 11
 +  u[2] = 22; u[3] = 33
-+  assertEq(11, u[1])
-+  assertEq(22, u[2])
-+  assertEq(33, u[3]); assertEq(nil, rawget(u, 3))
-+  assertEq({11, 22, 33}, loadu3s(u.f))
-+  assertEq(11, u[1]) -- testing loadu3s
-+  assertEq(3, #u)
++  T.eq(11, u[1])
++  T.eq(22, u[2])
++  T.eq(33, u[3]); T.eq(nil, rawget(u, 3))
++  T.eq({11, 22, 33}, loadu3s(u.f))
++  T.eq(11, u[1]) -- testing loadu3s
++  T.eq(3, #u)
 +
-+  u[2] = 20; assertEq({11, 20, 33}, loadu3s(u.f))
-+  assertEq(20, u[2])
-+  assertEq(33, u[3])
++  u[2] = 20; T.eq({11, 20, 33}, loadu3s(u.f))
++  T.eq(20, u[2])
++  T.eq(33, u[3])
 +
 +  u[1] = 10; u[4] = 44; u[5] = 55
-+  assertEq({10, 20, 33, 44, 55}, loadu3s(u.f))
-+  assertEq(10, u[1])
-+  assertEq(55, u[5])
++  T.eq({10, 20, 33, 44, 55}, loadu3s(u.f))
++  T.eq(10, u[1])
++  T.eq(55, u[5])
 +
 +  local l = {}; for i, v in ipairs(u) do l[i] = v end
-+  assertEq({10, 20, 33, 44, 55}, l)
-+  assertEq(5, #u)
++  T.eq({10, 20, 33, 44, 55}, l)
++  T.eq(5, #u)
 +
 +  u = U3File:create(IDX)
 +  ds.extend(u, {0, 3, 5, 7})
-+  assertEq(0, u[1])
-+  assertEq(7, u[4])
-+end)
++  T.eq(0, u[1])
++  T.eq(7, u[4])
++end
 +
-+test('reindex', function()
++T.reindex = function()
 +  local reindex = File._reindex
 +  local idx, f = {}, io.tmpfile()
 +  local txt = 'hi\nthere\nindex'
 +  f:write(txt); f:flush(); f:seek'set'
-+  assertEq(#txt, reindex(f, idx))
-+    assertEq({0, 3, 9}, idx)
++  T.eq(#txt, reindex(f, idx))
++    T.eq({0, 3, 9}, idx)
 +
 +  idx = {} f:write'\n'; f:flush(); f:seek'set'
-+  assertEq(#txt + 1, reindex(f, idx))
-+    assertEq({0, 3, 9, 15}, idx)
++  T.eq(#txt + 1, reindex(f, idx))
++    T.eq({0, 3, 9, 15}, idx)
 +
 +  -- test indexing from a l,pos
 +  idx = {0, 3}; f:seek('set', 9)
-+  assertEq(#txt + 1, reindex(f, idx, 3, 9))
-+    assertEq({0, 3, 9, 15}, idx)
-+end)
++  T.eq(#txt + 1, reindex(f, idx, 3, 9))
++    T.eq({0, 3, 9, 15}, idx)
++end
 +
-+test('File', function()
++T.File = function()
 +  local f = assert(File()); f.cache = ds.Forget{}
-+  assertEq('lines.File()', fmt(f))
-+  assertEq(0, #f); assertEq({}, ds.icopy(f))
++  T.eq('lines.File()', fmt(f))
++  T.eq(0, #f); T.eq({}, ds.icopy(f))
 +
 +  local dat = {'one', 'two', 'three'}
 +  ds.extend(f, dat)
-+    assertEq({0, 4, 8}, ds.icopy(f.idx))
-+    assertEq('one',   f[1])
-+    assertEq('three', f[3])
-+    assertEq(dat, ds.icopy(f))
++    T.eq({0, 4, 8}, ds.icopy(f.idx))
++    T.eq('one',   f[1])
++    T.eq('three', f[3])
++    T.eq(dat, ds.icopy(f))
 +
-+  assertEq('one', f[1])
++  T.eq('one', f[1])
 +  push(f, 'four'); push(dat, 'four')
-+    assertEq(dat, ds.icopy(f))
-+  assertEq(4, #f); assertEq('four', f[#f])
++    T.eq(dat, ds.icopy(f))
++  T.eq(4, #f); T.eq('four', f[#f])
 +
 +  f:write': still in line four'; f:flush()
-+  assertEq('four: still in line four',          f[4])
++  T.eq('four: still in line four',          f[4])
 +  f:write' and this'
-+  assertEq('four: still in line four and this', f[4])
++  T.eq('four: still in line four and this', f[4])
 +
-+  assertEq('one\ntwo\nthree\n', pth.read(SMALL))
++  T.eq('one\ntwo\nthree\n', pth.read(SMALL))
 +  f = assert(File{path=SMALL}); f.cache = ds.Forget{}
-+  assertEq({'one', 'two', 'three', ''}, ds.icopy(f))
-+  assertEq('two', f[2])
++  T.eq({'one', 'two', 'three', ''}, ds.icopy(f))
++  T.eq('two', f[2])
 +
 +  f = File{path=TXT, mode='w+'}
 +  f:write'line 1\nline 2\nline 3'
-+  assertEq({0, 7, 14}, ds.icopy(f.idx))
-+  assertEq({'line 1', 'line 2', 'line 3'}, ds.icopy(f))
++  T.eq({0, 7, 14}, ds.icopy(f.idx))
++  T.eq({'line 1', 'line 2', 'line 3'}, ds.icopy(f))
 +  f:flush()
 +
 +  local r = f:reader()
-+  assertEq({'line 1', 'line 2', 'line 3'}, ds.icopy(r))
-+end)
-+
-+local function edEq(a, b)
-+  assertEq(EdFile, getmetatable(a))
-+  assertEq(EdFile, getmetatable(b))
-+  assertEq(ds.icopy(a), ds.icopy(b))
++  T.eq({'line 1', 'line 2', 'line 3'}, ds.icopy(r))
 +end
 +
-+test('EdFile.index', function()
++local function edEq(a, b)
++  T.eq(EdFile, getmetatable(a))
++  T.eq(EdFile, getmetatable(b))
++  T.eq(ds.icopy(a), ds.icopy(b))
++end
++
++T.EdFile_index = function()
 +  local ef = mty.construct(EdFile, {lens={}, dats={
 +    ds.Slc{si=1, ei=2},
 +    ds.Slc{si=3, ei=6},
 +  }})
 +
 +  -- test indexing logic itself
-+  assertEq(1, ef:_datindex(1))
-+  assertEq(1, ef:_datindex(2))
-+  assertEq({2}, ef.lens)
++  T.eq(1, ef:_datindex(1))
++  T.eq(1, ef:_datindex(2))
++  T.eq({2}, ef.lens)
 +
-+  assertEq(2, ef:_datindex(3))
-+  assertEq({2, 6}, ef.lens)
-+  assertEq(2, ef:_datindex(6))
-+  assertEq(6, #ef)
++  T.eq(2, ef:_datindex(3))
++  T.eq({2, 6}, ef.lens)
++  T.eq(2, ef:_datindex(6))
++  T.eq(6, #ef)
 +
 +  ef.lens[2] = nil
-+  assertEq(nil, ef:_datindex(7))
-+  assertEq({2, 6}, ef.lens)
-+  assertEq(nil, ef:_datindex(0))
++  T.eq(nil, ef:_datindex(7))
++  T.eq({2, 6}, ef.lens)
++  T.eq(nil, ef:_datindex(0))
 +
 +  -- test getting the index
 +  ef.dats = {
@@ -17650,65 +17514,65 @@ initial commit
 +    {'three', 'four', 'five', 'six'},
 +  }
 +  ef.lens = {}
-+  assertEq('one',   ef[1]); assertEq({2},    ef.lens)
-+  assertEq('three', ef[3]); assertEq({2, 6}, ef.lens)
-+  assertEq('six',   ef[6])
-+  assertEq(6, #ef)
-+end)
++  T.eq('one',   ef[1]); T.eq({2},    ef.lens)
++  T.eq('three', ef[3]); T.eq({2, 6}, ef.lens)
++  T.eq('six',   ef[6])
++  T.eq(6, #ef)
++end
 +
-+test('EdFile.newindex', function()
++T.EdFile_newindex = function()
 +  local S = function(si, ei) return ds.Slc{si=si, ei=ei} end
 +  local ef = EdFile()
-+  assertEq(0, #ef)
-+  assertEq({S(1, 0)},    ef.dats)
++  T.eq(0, #ef)
++  T.eq({S(1, 0)},    ef.dats)
 +
 +  push(ef, 'one')
-+  assertEq({S(1,1)}, ef.dats)
-+  assertEq({1},      ef.lens)
-+  assertEq('one', ef[1])
++  T.eq({S(1,1)}, ef.dats)
++  T.eq({1},      ef.lens)
++  T.eq('one', ef[1])
 +
 +  push(ef, 'two')
-+  assertEq({S(1,2)}, ef.dats)
-+  assertEq({2}, ef.lens)
-+  assertEq('one', ef[1])
-+  assertEq('two', ef[2])
++  T.eq({S(1,2)}, ef.dats)
++  T.eq({2}, ef.lens)
++  T.eq('one', ef[1])
++  T.eq('two', ef[2])
 +
 +  ef[1] = 'one 1'
-+  assertEq({Gap'one 1', S(2,2)}, ef.dats)
-+  assertEq({}, ef.lens)
-+  assertEq({'one 1', 'two'}, icopy(ef))
-+  assertEq({1, 2}, ef.lens); assertEq(2, #ef)
-+end)
++  T.eq({Gap'one 1', S(2,2)}, ef.dats)
++  T.eq({}, ef.lens)
++  T.eq({'one 1', 'two'}, icopy(ef))
++  T.eq({1, 2}, ef.lens); T.eq(2, #ef)
++end
 +
-+test('EdIter', function()
++T.EdIter = function()
 +  local ed = EdFile(SMALL)
 +  local small = {'one', 'two', 'three', ''}
-+  assertEq(small, ds.icopy(ed))
++  T.eq(small, ds.icopy(ed))
 +
 +  local ln, t = {}, {};
 +  for i, line in ed:iter() do push(ln, i); push(t, line) end
-+  assertEq({1, 2, 3, 4}, ln)
-+  assertEq(small, t)
-+end)
++  T.eq({1, 2, 3, 4}, ln)
++  T.eq(small, t)
++end
 +
-+test('EdFile.write', function()
++T.EdFile_write = function()
 +  local ed = EdFile(TXT, 'w+')
 +  ed:write'one\nthree\nfive'
 +  ed:flush()
-+  assertEq(3, #ed)
-+  assertEq('one\nthree\nfive', pth.read(TXT))
-+  assertEq({ds.Slc{si=1, ei=3}}, ed.dats)
++  T.eq(3, #ed)
++  T.eq('one\nthree\nfive', pth.read(TXT))
++  T.eq({ds.Slc{si=1, ei=3}}, ed.dats)
 +  ed:write' 5'
-+  assertEq('five 5', ed[3])
++  T.eq('five 5', ed[3])
 +
 +  ds.inset(ed, 2, {'two'})
 +  local expect = {'one', 'two', 'three', 'five 5'}
-+  assertEq(expect, ds.icopy(ed))
++  T.eq(expect, ds.icopy(ed))
 +  ds.inset(ed, 1, {'zero'})
-+  assertEq({
++  T.eq({
 +    'zero', 'one', 'two', 'three', 'five 5'
 +  }, ds.icopy(ed))
-+  assertEq({
++  T.eq({
 +    Gap'zero',
 +    ds.Slc{si=1, ei=1}, -- one
 +    Gap'two',
@@ -17720,35 +17584,35 @@ initial commit
 +    'zero 0', 'one 1',
 +    'two', 'three', 'five 5'
 +  }
-+  assertEq(expect, ds.icopy(ed))
-+  assertEq({
++  T.eq(expect, ds.icopy(ed))
++  T.eq({
 +    Gap'zero 0\none 1\ntwo',
 +    ds.Slc{si=2, ei=3}, -- three\nfive 5
 +  }, ed.dats)
-+  assertEq(5, #ed)
++  T.eq(5, #ed)
 +  ed[1] = 'zero 0' -- same
-+  assertEq(expect, ds.icopy(ed))
-+end)
++  T.eq(expect, ds.icopy(ed))
++end
 +
-+test('EdFile.big', function()
++T.EdFile_big = function()
 +  local ed = EdFile(TXT, 'w+')
 +  for i=1,100 do push(ed, 'line '..i) end
-+  assertEq(100, #ed)
++  T.eq(100, #ed)
 +
-+  assertEq(ed[3], 'line 3')
-+  assertEq({ds.Slc{si=1, ei=100}}, ed.dats)
++  T.eq(ed[3], 'line 3')
++  T.eq({ds.Slc{si=1, ei=100}}, ed.dats)
 +
 +  ed[3] = 'line 3.0'
-+  assertEq(ed[2], 'line 2')
-+  assertEq(ed[3], 'line 3.0')
-+  assertEq(ed[4], 'line 4')
++  T.eq(ed[2], 'line 2')
++  T.eq(ed[3], 'line 3.0')
++  T.eq(ed[4], 'line 4')
 +
 +  ds.inset(ed, 7, {'line 7.0', 'line 7.1', 'line 7.2'}, 1)
-+  assertEq(ed[6], 'line 6')
-+  assertEq(ed[7], 'line 7.0')
-+  assertEq(ed[10], 'line 8')
-+  assertEq(102, #ed)
-+end)
++  T.eq(ed[6], 'line 6')
++  T.eq(ed[7], 'line 7.0')
++  T.eq(ed[10], 'line 8')
++  T.eq(102, #ed)
++end
 +
 +local function newEdFile(text, ...)
 +  local ed = EdFile()
@@ -17758,13 +17622,13 @@ initial commit
 +  return ed
 +end
 +
-+test('EdFile.linesOffset', function()
++T.EdFile_linesOffset = function()
 +  testing.testOffset(newEdFile(testing.DATA.offset))
-+end)
++end
 +
-+test('EdFile.linesRemove', function()
++T.EdFile_linesRemove = function()
 +  testing.testLinesRemove(newEdFile, edEq, ds.noop)
-+end)
++end
 
 --- /dev/null
 +++ lib/lines/test_motion.lua
@@ -17773,20 +17637,20 @@ initial commit
 +
 +local mty = require'metaty'
 +local ds  = require'ds'
-+local test, assertEq; ds.auto'civtest'
++local T = require'civtest'
 +
 +local decDistance, lcLe, lcGe, lcWithin
 +local forword, backword, findBack
 +local wordKind
 +ds.auto'lines.motion'
 +
-+test('distance', function()
-+  assertEq(3, decDistance(1, 4))
-+  assertEq(2, decDistance(5, 1))
-+  assertEq(5, decDistance(5, 5))
-+end)
++T.distance = function()
++  T.eq(3, decDistance(1, 4))
++  T.eq(2, decDistance(5, 1))
++  T.eq(5, decDistance(5, 5))
++end
 +
-+test('lc', function()
++T.lc = function()
 +  assert(    lcLe(1,1,   1,3))
 +  assert(    lcLe(1,2,   1,3))
 +  assert(    lcLe(1,3,   1,3))
@@ -17812,34 +17676,34 @@ initial commit
 +  assert(    lcWithin(3, 3,  1, 4,   3, 3))
 +  assert(not lcWithin(3, 4,  1, 4,   3, 3))
 +  assert(not lcWithin(4, 1,  1, 4,   3, 3))
-+end)
++end
 +
-+test('wordKind', function()
-+  assertEq('let', wordKind('a'))
-+  assertEq('()',  wordKind('('))
-+  assertEq('()',  wordKind(')'))
-+  assertEq('sym', wordKind('+'))
-+end)
++T.wordKind = function()
++  T.eq('let', wordKind('a'))
++  T.eq('()',  wordKind('('))
++  T.eq('()',  wordKind(')'))
++  T.eq('sym', wordKind('+'))
++end
 +
-+test('forword', function()
-+  assertEq(3, forword('a bcd'))
-+  assertEq(3, forword('  bcd'))
-+  assertEq(2, forword(' bcd'))
-+  assertEq(3, forword('--bcd'))
-+  assertEq(2, forword('a+ bcd'))
-+  assertEq(5, forword('+12 +de', 2))
-+end)
++T.forword = function()
++  T.eq(3, forword('a bcd'))
++  T.eq(3, forword('  bcd'))
++  T.eq(2, forword(' bcd'))
++  T.eq(3, forword('--bcd'))
++  T.eq(2, forword('a+ bcd'))
++  T.eq(5, forword('+12 +de', 2))
++end
 +
-+test('backword', function()
-+  assertEq(3,   backword('a bcd', 4))
-+  assertEq(3,   backword('  bcd', 4))
-+  assertEq(nil, backword('  bcd', 3))
-+end)
++T.backword = function()
++  T.eq(3,   backword('a bcd', 4))
++  T.eq(3,   backword('  bcd', 4))
++  T.eq(nil, backword('  bcd', 3))
++end
 +
-+test('findBack', function()
-+  assertEq({7, 8},   {findBack('12 45 12 ', '12')})
-+  assertEq({1, 2},   {findBack('12 45 12 ', '12', 6)})
-+end)
++T.findBack = function()
++  T.eq({7, 8},   {findBack('12 45 12 ', '12')})
++  T.eq({1, 2},   {findBack('12 45 12 ', '12', 6)})
++end
 
 --- /dev/null
 +++ lib/lines/testdata/small.txt
@@ -17971,22 +17835,22 @@ initial commit
 +  ['\n'] = true, -- "invalid replacement value" but unreachable
 +}
 +M.Json.string = function(enc, s)
-+  push(enc, (sfmt('%q', s):gsub('\\?[\n9]', CTRL_SUB)))
++  enc:write( (sfmt('%q', s):gsub('\\?[\n9]', CTRL_SUB)) )
 +end
 +M.Json.table = function(f, t)
-+  if rawequal(t, f.null) then return push(f, 'null') end
++  if rawequal(t, f.null) then return f:write'null' end
 +  if f._level >= f.maxIndent then error'max depth reached (recursion?)' end
 +  local keys = sortKeys(t)
 +  f:level(1)
 +  if #keys == 0 then
-+    if #t > 1 then push(f, f.listStart) else push(f, '[') end
++    f:write((#t > 1) and f.listStart or '[')
 +    f:items(t, next(keys)); f:level(-1)
-+    if #t > 1 then push(f, f.listEnd)   else push(f, ']') end
++    f:write((#t > 1) and f.listEnd   or ']')
 +  else -- has non-list keys
 +    for i in ipairs(t) do push(keys, i) end
-+    if #keys > 1 then push(f, f.tableStart) else push(f, '{') end
++    f:write((#keys > 1) and f.tableStart or '{')
 +    f:keyvals(t, keys); f:level(-1)
-+    if #keys > 1 then push(f, f.tableEnd)   else push(f, '}') end
++    f:write((#keys > 1) and f.tableEnd or '}')
 +  end
 +end
 +M.Json.__call = function(f, v, podder, pod)
@@ -18014,7 +17878,7 @@ initial commit
 +-- encode as |bytes| instead of "string" for lson
 +-- You can set Enc.string = lson.bytes for this behavior
 +M.bytes = function(f, s)
-+  push(f, '|'); push(f, (s:gsub('(\\*)([\\\n|n])', mbytes))); push(f, '|')
++  f:write('|', s:gsub('(\\*)([\\\n|n])', mbytes), '|')
 +end
 +
 +--- Similar to JSON but no commas and strings are encoded as [$|bytes|]
@@ -18192,49 +18056,49 @@ initial commit
 +
 +local function testString(encoded, decoded)
 +  local de = mty.construct(M.De, {l=1, c=1, line=encoded})
-+  T.assertEq(decoded, M.deString(de))
++  T.eq(decoded, M.deString(de))
 +end
-+T.test('string', function()
++T.string = function()
 +  testString([["example string"]],     [[example string]])
 +  testString([["example \"string\""]], [[example "string"]])
-+end)
++end
 +
-+T.test('skipWs', function()
++T.skipWs = function()
 +  local de = M.De(lines'  a\n  b')
-+  de:skipWs(); T.assertEq('a', de.line:sub(de.c,de.c))
++  de:skipWs(); T.eq('a', de.line:sub(de.c,de.c))
 +  de.c = de.c + 1
-+  de:skipWs(); T.assertEq('b', de.line:sub(de.c,de.c))
-+end)
++  de:skipWs(); T.eq('b', de.line:sub(de.c,de.c))
++end
 +
 +local function ltest(t, enc, expectEncoding, P)
 +  enc = enc or M.Json{}
 +  enc(t, P)
 +  local encoded = table.concat(enc)
 +  if expectEncoding then
-+    T.assertEq(expectEncoding, encoded)
++    T.eq(expectEncoding, encoded)
 +  end
 +  local de = M.De(lines(encoded))
 +  print(encoded)
 +  local decoded = de(P)
-+  T.assertEq(t, decoded)
++  T.eq(t, decoded)
 +  return enc, de
 +end
 +
-+T.test('lax', function()
-+  T.assertEq({1, 2},   M.decode'[1 2]')
-+  T.assertEq({a=2, 1}, M.decode'{1:1 "a":2}')
-+  T.assertErrorPat('1%.4: missing pattern ":"',
++T.lax = function()
++  T.eq({1, 2},   M.decode'[1 2]')
++  T.eq({a=2, 1}, M.decode'{1:1 "a":2}')
++  T.throws('1.4: missing pattern ":"',
 +    function() M.decode'{1 "a":2}' end)
-+end)
++end
 +
-+T.test('bytes', function()
-+  T.assertEq('abc',     M.decode '|abc|')
-+  T.assertEq('a\nc',    M.decode '|a\\nc|')
-+  T.assertEq('a\\nc',   M.decode[[|a\\nc|]])
-+  T.assertEq('a\\nc |', M.decode[[|a\\nc \||  ]])
-+end)
++T.bytes = function()
++  T.eq('abc',     M.decode '|abc|')
++  T.eq('a\nc',    M.decode '|a\\nc|')
++  T.eq('a\\nc',   M.decode[[|a\\nc|]])
++  T.eq('a\\nc |', M.decode[[|a\\nc \||  ]])
++end
 +
-+T.test('round', function()
++T.round = function()
 +  local L = M.Lson
 +  ltest({1, 2, 3},      nil,  '[1,2,3]')
 +  ltest({1, 2, 3},      L{},  '[1 2 3]')
@@ -18264,9 +18128,9 @@ initial commit
 +  ltest(true,              nil,  'true')
 +  ltest(ds.none,           nil,  'null')
 +  ltest({[ds.none]=false}, nil, '{null:false}')
-+end)
++end
 +
-+T.test('lson.pod', function()
++T.lson_pod = function()
 +  Tm.A = mty'A' { 'a1 [builtin]', 'a2 [Tm.A]' }
 +  pod(Tm.A)
 +  local a = Tm.A{ a1='hi'}
@@ -18278,15 +18142,15 @@ initial commit
 +    }, nil,
 +    [[{"a":{"a1":"a1value"}}]],
 +    pod.Map{K=pod.str, V=Tm.A})
-+end)
++end
 +
-+T.test('lson run testing_pod', function()
++T.lson_run_testing_pod = function()
 +  local tp = require'pod.testing'
 +  local encLson = function(v, P) return table.concat(Lson{}(v, P)) end
 +  local encJson = function(v, P) return table.concat(Json{}(v, P)) end
 +  tp.testAll(M.lson, M.decode)
 +  tp.testAll(M.json, M.decode)
-+end)
++end
 
 --- /dev/null
 +++ lib/luck/PKG.lua
@@ -18532,22 +18396,22 @@ initial commit
 +METATY_CHECK = true
 +local mty = require'metaty'
 +local ds = require'ds'
-+local test, assertEq, assertErrorPat; ds.auto'civtest'
++local T = require'civtest'
 +local LFile = require'lines.File'
 +local M = require'luck'
 +local D = 'lib/luck/'
 +
-+test("meta", function()
++T.meta = function()
 +  local path = D..'testdata/small.luck'
 +  local f = assert(LFile{path=path}); f.cache = ds.Forget{}
 +  local meta = M.loadMeta(f, path)
-+  assertEq({'small'}, meta)
++  T.eq({'small'}, meta)
 +  f:close()
 +
 +  local path = D..'testdata/withdeps.luck'
 +  local f = assert(LFile{path=path}); f.cache = ds.Forget{}
 +  local meta = M.loadMeta(f, path)
-+  assertEq({
++  T.eq({
 +    'test.withdeps',
 +    deps = {
 +      vals = 'test.vals',
@@ -18555,27 +18419,27 @@ initial commit
 +    }
 +  }, meta)
 +  f:close()
-+end)
++end
 +
-+test("load", function()
++T.load = function()
 +  local smallPath = D..'testdata/small.luck'
 +  local valsPath  = D..'testdata/vals.luck'
 +  local res = M.load(smallPath)
 +  local small = {i=8, s="hello", t={1, 2, v=3}}
-+  assertEq(small, res)
++  T.eq(small, res)
 +
 +  local res = M.loadall{D..'testdata/small.luck'}
-+  assertEq({small=small}, res)
++  T.eq({small=small}, res)
 +
 +  local resVals = M.load(valsPath)
 +  local vals = {val1 = 'first val', val2 = 222, val3 = 7}
-+  assertEq(vals, resVals)
++  T.eq(vals, resVals)
 +
 +  local withDeps = M.loadall{
 +    D..'testdata/withdeps.luck',
 +    smallPath, valsPath,
 +  }
-+  assertEq({
++  T.eq({
 +    small=small,
 +    ['test.vals'] = vals,
 +    ['test.withdeps'] = {
@@ -18585,7 +18449,7 @@ initial commit
 +      val2Plus3 = 229,
 +    }
 +  }, withDeps)
-+end)
++end
 +
 
 --- /dev/null
@@ -18628,7 +18492,7 @@ initial commit
 
 --- /dev/null
 +++ lib/metaty/Makefile
-@@ -0,0 +1,34 @@
+@@ -0,0 +1,38 @@
 +# Copy/pastable Makefile for Lua C sources.
 +
 +# Modify these for a new library
@@ -18637,22 +18501,26 @@ initial commit
 +OUT   = $(NAME)
 +LUA_VERSION = lua
 +
-+UNAME := $(shell uname)
++UNAME != uname
 +build:  $(UNAME)
++NetBSD: $(OUT).so
 +Linux:  $(OUT).so
 +Darwin: $(OUT).so
 +# Windows: $(OUT).dll
 +
 +WNO = -Wno-incompatible-function-pointer-types
 +
++debug:
++	echo uname=$(UNAME)
++	echo out=$(OUT)
++
 +$(OUT).so: $(FILES)
 +	make Build$(UNAME)
 +
-+# test: $(FILES)
-+# 	$(CC) ds_test.c -l$(LUA_VERSION) -I/usr/include/$(LUA_VERSION) -o smol_test
-+# 	./ds_test
++BuildNetBSD:
++	$(CC) $(FILES) -fPIC -llua -I/usr/pkg/include/$(LUA_VERSION) -shared -o $(OUT).so
 +
-+BuildLinux: $(FILES)
++BuildLinux:
 +	$(CC) $(FILES) -fPIC -l$(LUA_VERSION) -I/usr/include/$(LUA_VERSION) -shared -o $(OUT).so
 +
 +BuildDarwin:
@@ -18804,13 +18672,17 @@ initial commit
 
 --- /dev/null
 +++ lib/metaty/metaty.c
-@@ -0,0 +1,63 @@
+@@ -0,0 +1,68 @@
 +#include <lua.h>
 +#include <lualib.h>
 +#include <lauxlib.h>
++#include <string.h>
 +#include <assert.h>
 +
 +typedef lua_State LS;
++
++#define ASSERT(L, OK, ...) \
++  if(!(OK)) { luaL_error(L, __VA_ARGS__); }
 +
 +// concat(sep, ...) --> string
 +// concatenate all values (calling tostring on them) separated by sep.
@@ -18818,22 +18690,23 @@ initial commit
 +  size_t slen; uint8_t const* sep = luaL_checklstring(L, 1, &slen);
 +  int lasti = lua_gettop(L);
 +  if(lasti == 1) { lua_pushstring(L, ""); return 1; }
-+  // require space for all arguments to be converted to strings + result.
-+  if (!lua_checkstack(L, (lasti - 1) * 2 + 1)) {
-+    luaL_error(L, "string.concat stack overflow");
++  size_t vlen;
++  // First compute the size and allocate the exact space we need
++  size_t size = slen * (lasti - 2);  // size of all separators
++  for(int i=2; i <= lasti; i++) {
++    ASSERT(L, lua_tolstring(L, i, &vlen), "arg[%I] is not a string or number", i)
++    size += vlen;
 +  }
-+  int size = slen * (lasti - 2);  // size of all separators
-+  for(int i=2; i <= lasti; i++) { // convert tostring and calc bufsize
-+    luaL_tolstring(L, i, NULL); size += lua_rawlen(L, -1);
++  luaL_Buffer lb;
++  char* b = luaL_buffinitsize(L, &lb, size); ASSERT(L, b, "OOM");
++  const char* v = lua_tolstring(L, 2, &vlen);
++  memcpy(b, v, vlen); b += vlen;
++  for(int i = 3; i <= lasti; i++) {
++    memcpy(b, sep, slen); b += slen;
++    v = lua_tolstring(L, i, &vlen);
++    memcpy(b, v, vlen); b += vlen;
 +  }
-+  luaL_Buffer lb; luaL_buffinitsize(L, &lb, size);
-+  size_t alen; uint8_t const* arg;
-+  arg = lua_tolstring(L, lasti+1, &alen); luaL_addlstring(&lb, arg, alen);
-+  for(int i = lasti+2; i <= lasti + (lasti - 1); i++) {
-+    luaL_addlstring(&lb, sep, slen);
-+    arg = lua_tolstring(L, i, &alen); luaL_addlstring(&lb, arg, alen);
-+  }
-+  luaL_pushresult(&lb);
++  luaL_pushresultsize(&lb, size);
 +  return 1;
 +}
 +
@@ -18871,11 +18744,13 @@ initial commit
 
 --- /dev/null
 +++ lib/metaty/metaty.lua
-@@ -0,0 +1,408 @@
+@@ -0,0 +1,427 @@
 +local G = G or _G
 +
 +--- metaty: simple but effective Lua type system using metatable
 +local M = G.mod and G.mod'metaty' or setmetatable({}, {})
++local concat = table.concat
++local getmt = getmetatable
 +
 +do
 +  local treq = function(n) --> try to require n from metaty.native
@@ -18894,7 +18769,6 @@ initial commit
 +  or function(t, v) local i = #t + 1; t[i] = v; return i end
 +end
 +
-+local concat = table.concat
 +local srep = string.rep
 +local sfmt = string.format
 +
@@ -18921,7 +18795,7 @@ initial commit
 +--- This first looks for the item directly on the table, then the item
 +--- in the table's metatable. It does NOT use the table's normal [$__index].
 +M.getmethod = function(t, method)
-+  return rawget(t, method) or rawget(getmetatable(t) or EMPTY, method)
++  return rawget(t, method) or rawget(getmt(t) or EMPTY, method)
 +end
 +
 +---------------
@@ -18930,7 +18804,7 @@ initial commit
 +
 +M.ty = function(o) --> Type: string or metatable
 +  local t = type(o)
-+  return t == 'table' and getmetatable(o) or t
++  return t == 'table' and getmt(o) or t
 +end
 +
 +--- Given a type return it's name
@@ -18947,16 +18821,16 @@ initial commit
 +  local ty = type(o)
 +  return ty == 'function' and M.fninfo(o)
 +      or ty == 'table'    and M.tyName(M.ty(o))
-+      or ty == 'userdata' and M.tyName(getmetatable(o), 'userdata')
++      or ty == 'userdata' and M.tyName(getmt(o), 'userdata')
 +      or ty
 +end
 +
 +M.callable = function(obj) --> bool: return if obj is callable
 +  if type(obj) == 'function' then return true end
-+  local m = getmetatable(obj)
++  local m = getmt(obj)
 +  return m and rawget(m, '__call') and true
 +end
-+M.metaget = function(t, k)   return rawget(getmetatable(t), k) end
++M.metaget = function(t, k)   return rawget(getmt(t), k) end
 +
 +--- keywords https://www.lua.org/manual/5.4/manual.html
 +M.KEYWORD = {}; for kw in string.gmatch([[
@@ -19012,6 +18886,23 @@ initial commit
 +  return M.rawsplit, subj, {pat or '%s+', index or 1}
 +end
 +
++--- The default __fmt method.
++M.fmt = function(self, f)
++  local mt = getmt(self)
++  local fields = rawget(mt, '__fields')
++  local multi = #fields > 1 -- use multiple lines
++  f:write(rawget(mt, '__name'));
++  f:level(1);  f:write(multi and f.tableStart or '{')
++  f:keyvals(self, fields)
++  f:level(-1); f:write(multi and f.tableEnd or '}')
++end
++
++--- The default __tostring method.
++M.tostring = function(self)
++  local mt = getmt(self)
++  return sfmt('%s@%p', rawget(mt, '__name'), self)
++end
++
 +-----------------------------
 +-- Equality
 +M.nativeEq = function(a, b) return a == b end
@@ -19021,7 +18912,7 @@ initial commit
 +  ['nil']  = rawequal,   ['function'] = rawequal,
 +  ['table'] = function(a, b)
 +    if a == b then return true end
-+    local mt = getmetatable(a)
++    local mt = getmt(a)
 +    if type(mt) == 'table' and rawget(mt, '__eq') then
 +      return false -- true equality already tested
 +    end
@@ -19058,7 +18949,7 @@ initial commit
 +end
 +M.newindex = function(r, k, v)
 +  if type(k) == 'string' and not M.metaget(r, '__fields')[k] then
-+    M.indexError(getmetatable(r), k, 3)
++    M.indexError(getmt(r), k, 3)
 +  end
 +  rawset(r, k, v)
 +end
@@ -19114,11 +19005,13 @@ initial commit
 +    fieldIds[id] = id
 +  end; R.reserved = nil
 +  R.__fields, R.__fieldIds, R.__docs = M.extendFields({}, fieldIds, {}, R)
-+  R.__index  = rawget(R, '__index') or R
++  R.__fmt      = rawget(R, '__fmt')      or M.fmt
++  R.__tostring = rawget(R, '__tostring') or M.tostring
++  R.__index    = rawget(R, '__index')    or R
 +  local mt = {
-+    __name='Ty<'..R.__name..'>',
-+    __newindex=mod and mod.__newindex,
-+    __tostring=function() return R.__name end,
++    __name     = 'Ty<'..R.__name..'>',
++    __newindex = mod and mod.__newindex,
++    __tostring = function() return R.__name end,
 +  }
 +  local R = setmetatable(R, mt)
 +  if G.METATY_CHECK then
@@ -19139,15 +19032,14 @@ initial commit
 +
 +M.isRecord = function(t)
 +  if type(t) ~= 'table' then return false end
-+  local mt = getmetatable(t)
++  local mt = getmt(t)
 +  return mt and mt.__name and mt.__name:find'^Ty<'
 +end
-+
 +
 +--- Extend the Type with (optional) new name and (optional) additional fields.
 +M.extend = function(Type, name, fields)
 +  name, fields = name or Type.__name, fields or {}
-+  local E, mt = update({}, Type), update({}, getmetatable(Type))
++  local E, mt = update({}, Type), update({}, getmt(Type))
 +  E.__name, mt.__name = name, 'Ty<'..name..'>'
 +  E.__index = E
 +  E.__fields   = update({}, E.__fields);
@@ -19278,7 +19170,7 @@ initial commit
 +  return function(nameIds) return M.namedEnum(name, nameIds) end
 +end
 +
-+getmetatable(M).__call = function(T, name) return M.record(name) end
++getmt(M).__call = function(T, name) return M.record(name) end
 +return M
 
 --- /dev/null
@@ -19330,7 +19222,7 @@ initial commit
 +  assertEq('one',          sc(' ', 'one'))
 +  assertEq('1 2',          sc(' ', '1', 2))
 +  assertEq('12',           sc('', '1', 2))
-+  assertEq('one-two-true', sc('-', 'one', 'two', true))
++  assertEq('one-two-true', sc('-', 'one', 'two', 'true'))
 +end)
 +
 +test('table.update', function()
@@ -19643,7 +19535,7 @@ initial commit
 
 --- /dev/null
 +++ lib/pegl/pegl.lua
-@@ -0,0 +1,728 @@
+@@ -0,0 +1,727 @@
 +local G = G or _G
 +
 +--- pegl: peg-like lua parser
@@ -19653,12 +19545,12 @@ initial commit
 +local fmt     = require'fmt'
 +local ds      = require'ds'
 +local lines   = require'lines'
-+local civtest = require'civtest'
++local T       = require'civtest'
 +local extend  = ds.extend
 +local push, pop = table.insert, table.remove
++local concat, unpack = table.concat, table.unpack
 +local sfmt    = string.format
 +local srep = string.rep
-+local pushfmt = ds.pushfmt
 +local ty = mty.ty
 +
 +local function zero() return 0 end
@@ -19681,8 +19573,8 @@ initial commit
 +end
 +M.Token.decode = function(t, dat) return lines.sub(dat, M.decodeSpan(t[1])) end
 +M.Token.__fmt = function(t, f)
-+  push(f, 'Tkn'); if t.kind then pushfmt(f, '<%s>', t.kind) end
-+  pushfmt(f, '(%s.%s %s.%s)', t:span())
++  f:write'Tkn'; if t.kind then f:write(sfmt('<%s>', t.kind)) end
++  f:write(sfmt('(%s.%s %s.%s)', t:span()))
 +end
 +
 +local TOKEN_TY = {string=true, [M.Token]=true}
@@ -19757,24 +19649,23 @@ initial commit
 +}
 +
 +M.fmtSpec = function(s, f)
-+  if type(s) == 'string'   then return pushfmt(f, "%q", s) end
-+  if type(s) == 'function' then return push(f, fmt(s)) end
++  if type(s) == 'string'   then return f(s) end
++  if type(s) == 'function' then return f(s) end
 +  if s.name or s.kind then
-+    push(f, '<'); push(f, s.name or s.kind); push(f, '>')
-+    return
++    return f:write('<', s.name or s.kind, '>')
 +  end
-+  if ty(s) ~= 'table' then push(f, mty.tyName(ty(s))) end
++  if ty(s) ~= 'table' then f:write(mty.tyName(ty(s))) end
 +
-+  f:level(1); push(f, f.tableStart)
++  f:level(1); f:write(f.tableStart)
 +  for i, sub in ipairs(s) do
-+    f(sub); if i < #s then push(f, ' ') end
++    f(sub); if i < #s then f:write' ' end
 +  end
-+  f:level(-1); push(f, f.tableEnd)
++  f:level(-1); f:write(f.tableEnd)
 +end
 +M.specToStr = function(s, fmt)
 +  local fmt = fmt or fmt.Fmt:pretty()
 +  M.fmtSpec(s, fmt)
-+  return table.concat(fmt)
++  return concat(fmt)
 +end
 +
 +--- Create a parser spec record. These have the fields [$kind] and [$name]
@@ -20112,18 +20003,17 @@ initial commit
 +M.Parser.assertNode = function(p, expect, node, root)
 +  local result = p:toStrTokens(node)
 +  if not mty.eq(expect, result) then
-+    local eStr = table.concat(p.root.newFmt()(expect))
-+    local rStr = table.concat(p.root.newFmt()(result))
++    local eStr = concat(p.root.newFmt()(expect))
++    local rStr = concat(p.root.newFmt()(result))
 +    if eStr ~= rStr then
 +      print('\n#### EXPECT:'); print(eStr)
 +      print('\n#### RESULT:'); print(rStr)
 +      print()
-+      local b = {}; civtest.diffFmt(b, eStr, rStr)
-+      print(table.concat(b))
++      civtest.showDiff(io.fmt, eStr, rStr)
 +    else
 +      print('\n#### FORMATTED:'); print(eStr)
 +      print('## Note: They format the same but they differ')
-+      civtest.assertEq(t.expect, result)
++      T.eq(t.expect, result)
 +    end
 +    error'failed parse test'
 +  end
@@ -20147,7 +20037,7 @@ initial commit
 +end
 +
 +M.assertParseError=function(t)
-+  civtest.assertErrorPat(
++  T.throws(
 +    t.errPat,
 +    function() M.parse(assert(t.dat), assert(t.spec)) end,
 +    t.plain)
@@ -20171,8 +20061,8 @@ initial commit
 +--- Parses the spec, returning the node, which is a table of nodes that are
 +--- eventually tokens.
 +M.Parser.parse = function(p, spec) --> node
-+  local T = ty(spec)
-+  local specFn = SPEC_TY[T]
++  local Ty = ty(spec)
++  local specFn = SPEC_TY[Ty]
 +  if specFn then return specFn(p, spec)
 +  else           return spec:parse(p) end
 +end
@@ -20257,8 +20147,8 @@ initial commit
 +      push(b, sfmt('%s(%s.%s)', v, p.stackL[i], p.stackC[i]))
 +    end
 +  end
-+  pushfmt(b, '%s(%s.%s)', table.unpack(p.stackLast))
-+  return table.concat(b, ' -> ')
++  push(b, sfmt('%s(%s.%s)', unpack(p.stackLast)))
++  return concat(b, '\n  ')
 +end
 +M.Parser.checkPin=function(p, pin, expect)
 +  if not pin then return end
@@ -20271,7 +20161,7 @@ initial commit
 +end
 +M.Parser.error=function(p, msg)
 +  local lmsg = sfmt('[LINE %s.%s]', p.l, p.c)
-+  fmt.errorf("ERROR %s\n%s%s\n%s\nCause: %s\nParse stack: %s",
++  fmt.errorf("ERROR %s\n%s%s\n%s\nCause: %s\nParse stack:\n  %s",
 +    rawget(p.dat, 'path') or '(rawdata)',
 +    lmsg, p.line, srep(' ', #lmsg + p.c - 2)..'^',
 +    msg, fmtStack(p))
@@ -20345,14 +20235,15 @@ initial commit
 +
 +-- formatting parsed so it can be copy/pasted
 +local fmtKindNum = function(name, f, t)
-+  push(f, name..sfmt('{%s%s%s}',
++  f:write(name..sfmt('{%s%s%s}',
 +    mty.eq(t[1],M.EMPTY) and '' or 'neg=1 ', t[2],
 +    (mty.eq(t[3],M.EMPTY) and '') or (','..t[4])
-+))end
++  ))
++end
 +M.fmtKinds = {
-+  EOF   = function(f, t) push(f, 'EOF')   end,
-+  EMPTY = function(f, t) push(f, 'EMPTY') end,
-+  name  = function(f, t) pushfmt(f, 'N%q', t[1]) end,
++  EOF   = function(f, t) f:write'EOF'   end,
++  EMPTY = function(f, t) f:write'EMPTY' end,
++  name  = function(f, t) f:write(sfmt('N%q', t[1])) end,
 +  n10   = function(...) fmtKindNum('NUM', ...) end,
 +  n16   = function(...) fmtKindNum('HEX', ...) end,
 +}
@@ -20361,7 +20252,7 @@ initial commit
 +  'kinds [table]: kind -> fmtFn', kinds=M.fmtKinds,
 +}
 +M.FmtPegl.__call = function(ft, f, t)
-+  if M.isKeyword(t) then pushfmt(f, 'KW%q', t[1]); return end
++  if M.isKeyword(t) then f:write(sfmt('KW%q', t[1])); return end
 +  local fmtK = t.kind and ft.kinds and ft.kinds[t.kind]
 +  if fmtK then fmtK(f, t) else fmt.Fmt.table(f, t) end
 +end
@@ -20646,7 +20537,7 @@ initial commit
 
 --- /dev/null
 +++ lib/pegl/tests/test_lua.lua
-@@ -0,0 +1,359 @@
+@@ -0,0 +1,367 @@
 +METATY_CHECK = true
 +
 +local mty = require'metaty'
@@ -20666,7 +20557,7 @@ initial commit
 +local KW, N, NUM, HEX; ds.auto(testing)
 +local SRC = function(...) return {..., EMPTY, EMPTY, EOF} end
 +
-+T.test('easy', function()
++T.easy = function()
 +  assertParse{dat='42  0x3A', spec={num, num}, expect={
 +    NUM'42', HEX'0x3A',
 +  }, root=root}
@@ -20677,9 +20568,9 @@ initial commit
 +
 +  -- use exp instead
 +  assertParse{dat='  nil\n', spec={exp}, expect=KW('nil')}
-+end)
++end
 +
-+T.test('str', function()
++T.str = function()
 +  assertParse{dat=' "hi there" ', spec={str},
 +    expect={kind='doubleStr', '"hi there"'}}
 +  assertParse{dat=[[  'yo\'ya'  ]], spec={str},
@@ -20699,16 +20590,16 @@ initial commit
 +    expect={kind='bracketStr',
 +      "[====[", "\n[=[\n[[ wow ]]\n]=]\n", "]====]",
 +    }}
-+end)
++end
 +
-+T.test('decimal', function()
++T.decimal = function()
 +  assertParse{dat='-42 . 3343', spec={num}, expect=
 +    NUM{neg=true, '42','3343'}
 +  , root=root}
-+end)
++end
 +
 +
-+T.test('field', function()
++T.field = function()
 +  assertParse{dat=' 44 ',     spec={field},
 +    expect={kind='field', NUM'44'}}
 +  assertParse{dat=' hi ',     spec={field},
@@ -20725,9 +20616,9 @@ initial commit
 +      KW('='), NUM'4',
 +    }
 +  }
-+end)
++end
 +
-+T.test('table', function()
++T.table = function()
 +  assertParse{dat='{}', spec={exp}, 
 +    expect={kind='table',
 +      KW('{'), EMPTY, KW('}'),
@@ -20752,9 +20643,9 @@ initial commit
 +      KW('}'),
 +    },
 +  }
-+end)
++end
 +
-+T.test('fnValue', function()
++T.fnValue = function()
 +  assertParse{dat='function() end', spec={exp},
 +    expect = { kind='fnvalue',
 +      KW('function'), KW('('), EMPTY, KW(')'),
@@ -20762,9 +20653,9 @@ initial commit
 +      KW('end'),
 +    },
 +  }
-+end)
++end
 +
-+T.test('expression', function()
++T.expression = function()
 +  assertParse{dat='x+3', spec=exp,
 +    expect={N'x', KW'+', NUM'3'},
 +  }
@@ -20775,9 +20666,9 @@ initial commit
 +      }, KW"+", NUM'3'
 +    },
 +  }
-+end)
++end
 +
-+T.test('require', function()
++T.require = function()
 +  assertParse{dat='local F = require"foo"', spec=src,
 +    expect = SRC(
 +      { kind='varlocal',
@@ -20790,16 +20681,16 @@ initial commit
 +      }
 +    ),
 +  }
-+end)
++end
 +
-+T.test('varset', function()
++T.varset = function()
 +  local code1 = 'a = 7'
 +  local expect1 = {kind='varset', N'a', KW'=', NUM'7',
 +  }
 +  assertParse{dat=code1, spec=varset, expect=expect1}
-+end)
++end
 +
-+T.test('comment', function()
++T.comment = function()
 +  local expect = SRC(
 +    {kind='varset',
 +      N"x", KW"=", {kind="table",
@@ -20815,9 +20706,9 @@ initial commit
 +  assertParse{dat='x\n=\n-- \n--block\n\n{}--hi\n--EOF', spec=src,
 +    expect = expect, root=root,
 +  }
-+end)
++end
 +
-+T.test('function', function()
++T.function_ = function()
 +  assertParse{ spec=src, root=root,
 +    dat=[[ local function f(a) end ]],
 +    expect = {
@@ -20826,9 +20717,9 @@ initial commit
 +      }, EMPTY, EMPTY, EOF
 +    },
 +  }
-+end)
++end
 +
-+T.test('fncall', function()
++T.fncall = function()
 +  local r, n, p = assertParse{dat='foo(4)', spec=src, root=root,
 +    expect = SRC({ kind="stmtexp",
 +      N"foo", {kind='call',
@@ -20845,7 +20736,7 @@ initial commit
 +    kind="stmtexp"
 +  }, EMPTY, EMPTY, EOF
 +}]]
-+  T.assertEq(expect, table.concat(root.newFmt()(r)))
++  T.eq(expect, table.concat(root.newFmt()(r)))
 +
 +  assertParse{dat='foo({__tostring=4})', spec=src, root=root,
 +    expect = SRC({ kind="stmtexp",
@@ -20874,9 +20765,9 @@ initial commit
 +      },
 +    }),
 +  }
-+end)
++end
 +
-+T.test('if elseif else', function()
++T.if_elseif_else = function()
 +  assertParse{dat='if n==nil then return "" end', spec=src, root=root,
 +    expect=SRC(
 +    { kind='if',
@@ -20890,9 +20781,9 @@ initial commit
 +      }, EMPTY, EMPTY, KW"end",
 +    })
 +  }
-+end)
++end
 +
-+T.test('fnChain', function()
++T.fnChain = function()
 +  assertParse{dat='x(1)(3)', spec=src, root=root,
 +    expect=SRC{ kind="stmtexp", N"x",
 +      { KW"(", NUM{1}, KW")", kind="call" },
@@ -20908,9 +20799,9 @@ initial commit
 +      },
 +    }
 +  }
-+end)
++end
 +
-+T.test('src1', function()
++T.src1 = function()
 +  local code1 = 'a.b = function(y, z) return y + z end'
 +  local expect1 = SRC({kind='varset',
 +    N'a', KW'.', N'b', KW'=', {kind='fnvalue',
@@ -20930,12 +20821,12 @@ initial commit
 +    N'x', KW'=', N'y',
 +  }))
 +  assertParse{dat=code2, spec=src, expect=expect2}
-+end)
++end
 +
 +local function extendExpectAssert(code, spec, expect, extend, dbg)
-+  T.assertEq(EOF, table.remove(expect))
-+  T.assertEq(EMPTY, table.remove(expect))
-+  T.assertEq(EMPTY, table.remove(expect))
++  T.eq(EOF, table.remove(expect))
++  T.eq(EMPTY, table.remove(expect))
++  T.eq(EMPTY, table.remove(expect))
 +  ds.extend(expect, extend)
 +  table.insert(expect, EMPTY)
 +  table.insert(expect, EMPTY)
@@ -20943,7 +20834,7 @@ initial commit
 +  assertParse{dat=code, spec=spec, expect=expect, root=root, dbg=dbg}
 +end
 +
-+T.test('src2', function()
++T.src2 = function()
 +  local code = '-- this is a comment\n--\n-- and another comment\n'
 +  assertParse{dat=code, spec=src, expect={EMPTY, EOF}, root=root}
 +
@@ -20972,40 +20863,48 @@ initial commit
 +      },
 +    },
 +  })
-+end)
++end
 +
-+local ERR_EXPECT =
-+"[LINE 2.22]          x = 1 + {2 3} -- '2 3' is invalid\
-+                               ^\
-+Cause: parser expected: \"}\"\
-+Got: 3} -- '2 3' is invalid\
-+Parse stack: src(1.9) -> block(1.9) -> stmt(1.9) -> fnlocal(1.9) -> fnbody(1.25) -> block(2.11)"
-+.." -> stmt(2.11) -> varset(2.11) -> exp(2.15) -> op2exp(2.17) -> exp(2.19) -> exp1(2.19) -> table(2.19)"
++local ERR_EXPECT = [===[
++[LINE 2.20]        x = 1 + {2 3} -- '2 3' is invalid
++                             ^
++Cause: parser expected: "}"
++Got: 3} -- '2 3' is invalid
++Parse stack:
++  src(1.7)
++  block(1.7)
++  stmt(1.7)
++  fnlocal(1.7)
++  fnbody(1.23)
++  block(2.9)
++  stmt(2.9)
++  varset(2.9)
++  exp(2.13)
++  op2exp(2.15)
++  exp(2.17)
++  exp1(2.17)
++  table(2.17)]===]
 +
-+T.test('error', function()
-+  T.assertErrorPat(
-+    ERR_EXPECT,
-+    function()
-+      pegl.parse([[
-+        local function x()
-+          x = 1 + {2 3} -- '2 3' is invalid
-+        end
-+      ]], src, RootSpec{dbg=false})
-+    end,
-+    true -- plain
-+  )
-+end)
++T.error = function()
++  T.throws(ERR_EXPECT, function()
++    pegl.parse([[
++      local function x()
++        x = 1 + {2 3} -- '2 3' is invalid
++      end
++    ]], src, RootSpec{dbg=false})
++  end)
++end
 +
 +local function testLuaPath(path)
 +  local text = pth.read(path)
 +  assertParse{dat=text, spec=src, root=root, parseOnly=true}
 +end
 +
-+T.test('parseSrc', function()
++T.parseSrc = function()
 +  -- testLuaPath('/patience/patience2.lua')
 +  testLuaPath(D..'pegl.lua')
 +  testLuaPath(D..'pegl/lua.lua')
-+end)
++end
 
 --- /dev/null
 +++ lib/pegl/tests/test_pegl.lua
@@ -21026,17 +20925,17 @@ initial commit
 +local KW, N = testing.KW, testing.N
 +
 +local function testEncode(d, e, ...)
-+  T.assertEq({...}, {d(e(...))})
++  T.eq({...}, {d(e(...))})
 +end
 +
-+T.test('lc encode', function()
++T.lc_encode = function()
 +  local e, d = pegl.encodeSpan, pegl.decodeSpan
 +  testEncode(d, e, 1, 2, 3, 4)
 +  local bigL = 0x1FFFF
 +  testEncode(d, e, bigL, 1, bigL+100, 20)
-+end)
++end
 +
-+T.test('keywords', function()
++T.keywords = function()
 +  assertParse{
 +    dat='hi there bob',
 +    spec=Seq{'hi', 'there', 'bob', Eof},
@@ -21055,9 +20954,9 @@ initial commit
 +    spec=Seq{'hi', '+', 'there', Eof},
 +    expect={KW('hi'), KW('+'), KW('there'), EOF},
 +  }
-+end)
++end
 +
-+T.test('key', function()
++T.key = function()
 +  local kws = Key{{'hi', 'there', 'bob'}, kind='kw'}
 +  assertParse{
 +    dat='hi there', spec={kws, kws},
@@ -21068,33 +20967,33 @@ initial commit
 +    dat='x + x ++ x', spec={kws, kws, kws, kws, kws},
 +    expect={KW'x', KW'+', KW'x', KW'++', KW'x'},
 +  }
-+end)
++end
 +
-+T.test('pat', function()
++T.pat = function()
 +  assertParse{
 +    dat='hi there bob',
 +    spec={'hi', Pat('%w+'), 'bob', Eof},
 +    expect={KW('hi'), 'there', KW('bob'), EOF},
 +  }
-+end)
++end
 +
-+T.test('or', function()
++T.or_ = function()
 +  assertParse{
 +    dat='hi +-',
 +    spec={'hi', Or{'-', '+'}, Or{'-', '+', Empty}, Or{'+', Empty}, Eof},
 +    expect={KW('hi'), KW('+'), KW('-'), EMPTY, EOF},
 +  }
-+end)
++end
 +
-+T.test('many', function()
++T.many = function()
 +  assertParse{
 +    dat='hi there bob',
 +    spec=Seq{Many{Pat'%w+', kind='words'}},
 +    expect={'hi', 'there', 'bob', kind='words'},
 +  }
-+end)
++end
 +
-+T.test('pin', function()
++T.pin = function()
 +  assertParseError{
 +    dat='hi there jane',
 +    spec={'hi', 'there', 'bob', Eof},
@@ -21116,7 +21015,7 @@ initial commit
 +    spec=Seq{UNPIN, 'hi', 'there', 'bob', PIN, Eof},
 +    expect=nil,
 +  }
-+end)
++end
 
 --- /dev/null
 +++ lib/pkg/PKG.lua
@@ -21267,7 +21166,7 @@ initial commit
 
 --- /dev/null
 +++ lib/pkg/pkglib.lua
-@@ -0,0 +1,280 @@
+@@ -0,0 +1,281 @@
 +-- pkg: better lua pkg creation and importing
 +-- usage:
 +--   require'pkglib'()
@@ -21538,12 +21437,13 @@ initial commit
 +  setmetatable(_G, {__name='_G(globals)', __index=noG, __newindex=noG})
 +end
 +
-+--- call pkglib to "install" it, making [$require] use [$pkglib.get]
++--- call pkglib directly to "install" it, making [$require] use [$pkglib.get]
 +--- and adding [$G] and [$mod] globals.
 +getmetatable(M).__call = function()
++  if require == M.get then return end
 +  M.safeGlobal()
-+  G.require = M.get
 +  G.mod     = G.mod or M.mod
++  G.require = M.get
 +end
 +
 +getmetatable(M).__newindex = function() error'do not modify pkg' end
@@ -21551,7 +21451,7 @@ initial commit
 
 --- /dev/null
 +++ lib/pod/Makefile
-@@ -0,0 +1,35 @@
+@@ -0,0 +1,39 @@
 +# Copy/pastable Makefile for Lua C sources.
 +
 +# Modify these for a new library
@@ -21560,8 +21460,9 @@ initial commit
 +OUT   = $(NAME)
 +LUA_VERSION = lua
 +
-+UNAME := $(shell uname)
++UNAME != uname
 +build:  $(UNAME)
++NetBSD: $(OUT).so
 +Linux:  $(OUT).so
 +Darwin: $(OUT).so
 +# Windows: $(OUT).dll
@@ -21572,10 +21473,13 @@ initial commit
 +	make Build$(UNAME)
 +
 +# test: $(FILES)
-+# 	$(CC) ds_test.c -l$(LUA_VERSION) -I/usr/include/$(LUA_VERSION) -o smol_test
++# 	$(CC) ds_test.c -l$(LUA_VERSION) -I/usr/pkg/include/$(LUA_VERSION) -o smol_test
 +# 	./ds_test
 +
-+BuildLinux: $(FILES)
++BuildNetBSD:
++	$(CC) $(FILES) -fPIC -llua -I/usr/pkg/include/$(LUA_VERSION) -shared -o $(OUT).so
++
++BuildLinux:
 +	$(CC) $(FILES) -fPIC -l$(LUA_VERSION) -I/usr/include/$(LUA_VERSION) -shared -o $(OUT).so
 +
 +BuildDarwin:
@@ -21711,7 +21615,7 @@ initial commit
 
 --- /dev/null
 +++ lib/pod/pod.c
-@@ -0,0 +1,274 @@
+@@ -0,0 +1,270 @@
 +#include <stdlib.h>
 +#include <string.h>
 +#include <errno.h>
@@ -21794,13 +21698,12 @@ initial commit
 +  lua_pop(L, 1);
 +  luaL_Buffer lb; uint8_t* bs = luaL_buffinitsize(L, &lb, 8 + len);
 +  uint8_t* b = bs; ASSERT(0 == enclv(&b, b+8, type, len), "OOB");
-+  printf("!! encoded pre len=%i\n", b-bs);
 +  luaL_addsize(&lb, b-bs);
 +  luaL_addlstring(&lb, s, len);
 +  luaL_pushresult(&lb);
 +}
 +
-+void serTable(LS* L) {
++void serTable(LS* L) { // (table) -> encoded
 +  // get the tablei and cache the next value before buffinit
 +  int tablei = lua_gettop(L);
 +  size_t llen = lua_rawlen(L, tablei), mlen = 0; // list/map lens
@@ -21830,22 +21733,21 @@ initial commit
 +
 +  uint8_t *s; size_t len;
 +  while(true) { // serialize map items
-+    lua_pushvalue(L, tablei+1); if(!lua_next(L, tablei)) break;
++    lua_pushvalue(L, tablei+1);
++    if(!lua_next(L, tablei)) break; // else: (key, value)
 +    lua_copy(L, -2, tablei+1); // copy key for next loop
 +    if(lua_isinteger(L, -2)) {
 +      int i = lua_tointeger(L, -2);
-+      if((0 < i) && (i <= llen)) { lua_pop(L, 2); continue; } // skip list item
++      if((0 < i) && (i <= llen)) {
++        lua_pop(L, 2); continue; // skip list item
++      }
 +    }
 +
 +    ser(L);
-+    ASSERT(tablei+3 == lua_gettop(L), "tablei=%I i=%I", tablei, lua_gettop(L));
 +    s = (uint8_t*) lua_tolstring(L, -1, &len); lua_pop(L, 1);
 +
 +    ser(L);
-+    ASSERT(tablei+2 == lua_gettop(L), "tablei=%I i=%I", tablei, lua_gettop(L));
 +    size_t len2; uint8_t const* s2 = lua_tolstring(L, -1, &len2);
-+    printf("!! encoded key: %.*s\n",   len2, s2);
-+    printf("!! encoded value: %.*s\n", len,  s);
 +
 +    luaL_addvalue(&lb);           // key
 +    luaL_addlstring(&lb, s, len); // value
@@ -21914,9 +21816,7 @@ initial commit
 +
 +void deserLuaB(LS* L, uint8_t const** b, uint8_t const* be) {
 +  if(*b >= be) luaL_error(L, "OOB");
-+  printf("!! decoding LuaB\n");
 +  uint64_t v; uint8_t ty; ASSERT(0 == declv(b,be, &v,&ty), "OOB");
-+  printf("!!   ty=0x%X v=%li\n", ty, v);
 +  switch(ty) {
 +    case B_TABLE:
 +    case B_MAP:
@@ -21930,7 +21830,7 @@ initial commit
 +    case B_OTHER: switch(v) {
 +      case B_OTHER_FALSE: lua_pushboolean(L, false); return;
 +      case B_OTHER_TRUE:  lua_pushboolean(L, true);  return;
-+      default: // fallthrough
++      default: /*fallthrough*/;
 +    }
 +    default: luaL_error(L, "deserLuaB: unreachable");
 +  }
@@ -21989,8 +21889,7 @@ initial commit
 
 --- /dev/null
 +++ lib/pod/pod.lua
-@@ -0,0 +1,295 @@
-+print('!! loading pod')
+@@ -0,0 +1,291 @@
 +local G = G or _G
 +--- pod: plain old data
 +local M = G.mod and mod'pod' or setmetatable({}, {})
@@ -22262,7 +22161,6 @@ initial commit
 +
 +--- dump ser(...) to f, which can be a path or file.
 +M.dump = function(f, ...)
-+  print('!! dumping to '..f)
 +  local close
 +  if type(f) == 'string' then
 +    f = assert(io.open(f, 'w')); close = true
@@ -22278,21 +22176,19 @@ initial commit
 +    f = assert(io.open(f)); close = true
 +  end
 +  local str, err = f:read'a'; if close then f:close() end
-+  print('!! read', str, err)
 +  assert(str, err); return M.deser(str, ...)
 +end
 +
 +getmetatable(M).__call = function(M, ...) return M.implPod(...) end
-+print('!! loaded pod')
 +return M
 
 --- /dev/null
 +++ lib/pod/pod/testing.lua
-@@ -0,0 +1,112 @@
+@@ -0,0 +1,111 @@
 +local G = G or _G
 +local M = G.mod and mod'pod.testing' or {}
 +
-+local T  = require'civtest'.Test
++local T  = require'civtest'
 +local mty = require'metaty'
 +local ds  = require'ds'
 +local fmt = require'fmt'
@@ -22302,7 +22198,6 @@ initial commit
 +--- If expectEncoding is provided then test [$eq(expectEncoding, encFn(v)]
 +M.round = function(v, encFn, decFn, expectEncoding) --> (enc, dec)
 +  local P = mty.ty(v); if type(P) == 'string' then P = nil end
-+  print('!! round', fmt(P))
 +  local enc = encFn(v, P)
 +  if expectEncoding ~= nil then
 +    T.binEq(expectEncoding, enc)
@@ -22315,7 +22210,7 @@ initial commit
 +  for _, v in ipairs(values) do
 +    local ok, err = ds.try(M.round, v, encFn, decFn)
 +    if not ok then
-+      fmt.errorf('for value:\n%q\ngot: %s', v, err)
++      fmt.errorf('for value:\n%q\n  got: %s', v, err)
 +    end
 +  end
 +end
@@ -22411,7 +22306,7 @@ initial commit
 +local pod = require'pod'
 +local testing = require'pod.testing'
 +
-+local T = require'civtest'.Test
++local T = require'civtest'
 +
 +local podRound = function(P, v)
 +  local t = P(ds.deepcopy(v))
@@ -22739,7 +22634,7 @@ initial commit
 +M.setup = function(Args, args) --> args, styler
 +  args = Args(M.parseStr(args))
 +  local to = M.file(args.to, io.stdout)
-+  local styler = require'asciicolor.style'.Styler{
++  local styler = require'asciicolor'.Styler{
 +    f = to, color = M.color(args.color, require'fd'.isatty(to)),
 +  }
 +  if args.help then M.styleHelp(styler, Args) end
@@ -22756,45 +22651,45 @@ initial commit
 +local M = require'shim'
 +local p, ps, e = M.parse, M.parseStr, M.expand
 +
-+T.test('parse', function()
-+  T.assertEq({'a', 'b', c='42'},  ps'a --c=42 b')
-+  T.assertEq({c={'1', '2'}},      ps'--c=1 --c=2')
-+  T.assertEq({c={'1', '2', '3'}}, ps'--c=1 --c=2 --c=3')
++T.parse = function()
++  T.eq({'a', 'b', c='42'},  ps'a --c=42 b')
++  T.eq({c={'1', '2'}},      ps'--c=1 --c=2')
++  T.eq({c={'1', '2', '3'}}, ps'--c=1 --c=2 --c=3')
 +
-+  T.assertEq({'-ab', c='foo'}, p{'-ab', '--c=foo'})
-+  T.assertEq({'ab', '--', '--bob=1', c='foo'},
++  T.eq({'-ab', c='foo'}, p{'-ab', '--c=foo'})
++  T.eq({'ab', '--', '--bob=1', c='foo'},
 +            p{'ab', '--c=foo', '--', '--bob=1'})
-+end)
++end
 +
-+T.test('parseStr', function()
-+  T.assertEq({'a', 'b', c='42'}, ps'a   b --c=42')
-+  T.assertEq({c={'1', '2'}},     ps'--c=1   --c=2')
-+  T.assertEq({'-ab', c='foo'},   ps'-ab --c=foo')
-+end)
++T.parseStr = function()
++  T.eq({'a', 'b', c='42'}, ps'a   b --c=42')
++  T.eq({c={'1', '2'}},     ps'--c=1   --c=2')
++  T.eq({'-ab', c='foo'},   ps'-ab --c=foo')
++end
 +
-+T.test('expand', function()
-+  T.assertEq({'a', 'b', '--c=42'},           e{'a', 'b', c=42})
-+  T.assertEq({'a', 'b', '--c=42', '--d=hi'}, e(ps'a b --d=hi --c=42'))
-+end)
++T.expand = function()
++  T.eq({'a', 'b', '--c=42'},           e{'a', 'b', c=42})
++  T.eq({'a', 'b', '--c=42', '--d=hi'}, e(ps'a b --d=hi --c=42'))
++end
 +
-+T.test('list', function()
-+  T.assertEq({'12'},       M.list('12'))
-+  T.assertEq({'12', '34'}, M.list{'12', '34'})
-+  T.assertEq({'12 34'},    M.listSplit{'12 34'})
-+  T.assertEq({'12', '34'}, M.listSplit'12  \n  34')
-+  T.assertEq({'12', '34', '56', '78'},
++T.list = function()
++  T.eq({'12'},       M.list('12'))
++  T.eq({'12', '34'}, M.list{'12', '34'})
++  T.eq({'12 34'},    M.listSplit{'12 34'})
++  T.eq({'12', '34'}, M.listSplit'12  \n  34')
++  T.eq({'12', '34', '56', '78'},
 +             M.listSplit'12  \n  34 56 78')
-+end)
++end
 +
-+T.test('duck', function()
-+  T.assertEq(true, M.boolean(true))
-+  T.assertEq(true, M.boolean'true')
-+  T.assertEq(true, M.boolean'yes')
++T.duck = function()
++  T.eq(true, M.boolean(true))
++  T.eq(true, M.boolean'true')
++  T.eq(true, M.boolean'yes')
 +
-+  T.assertEq(false, M.boolean(false))
-+  T.assertEq(false, M.boolean'false')
-+  T.assertEq(nil, M.boolean(nil))
-+end)
++  T.eq(false, M.boolean(false))
++  T.eq(false, M.boolean'false')
++  T.eq(nil, M.boolean(nil))
++end
 
 --- /dev/null
 +++ lib/smol/.gitignore
@@ -22803,7 +22698,7 @@ initial commit
 
 --- /dev/null
 +++ lib/smol/Makefile
-@@ -0,0 +1,36 @@
+@@ -0,0 +1,40 @@
 +# Copy/pastable Makefile for Lua C sources.
 +
 +# Modify these for a new library
@@ -22812,8 +22707,9 @@ initial commit
 +OUT   = $(NAME)
 +LUA_VERSION = lua
 +
-+UNAME := $(shell uname)
++UNAME != uname
 +build:  $(UNAME)
++NetBSD: $(OUT).so
 +Linux:  $(OUT).so
 +Darwin: $(OUT).so
 +# Windows: $(OUT).dll
@@ -22824,10 +22720,13 @@ initial commit
 +	make Build$(UNAME)
 +
 +test: $(FILES)
-+	$(CC) smol_test.c -l$(LUA_VERSION) -I/usr/include/$(LUA_VERSION) -o smol_test
++	$(CC) smol_test.c -l$(LUA_VERSION) -I/usr/pkg/include/$(LUA_VERSION) -o smol_test
 +	./smol_test
 +
-+BuildLinux: $(FILES)
++BuildNetBSD:
++	$(CC) $(FILES) -fPIC -llua -I/usr/pkg/include/$(LUA_VERSION) -shared -o $(OUT).so
++
++BuildLinux:
 +	$(CC) $(FILES) -fPIC -l$(LUA_VERSION) -I/usr/include/$(LUA_VERSION) -shared -o $(OUT).so
 +
 +BuildDarwin:
@@ -23857,8 +23756,8 @@ initial commit
 +local encv, decv              = S.encv, S.decv
 +
 +local sfmt = string.format
-+local assertEq = require'civtest'.Test.eq
-+local assertBinEq = require'civtest'.Test.binEq
++local assertEq = require'civtest'.eq
++local assertBinEq = require'civtest'.binEq
 +local fbin = require'fmt.binary'
 +
 +local RDELTA, HUFF_CMDS, HUFF_RAW = 0x80, 0x40, 0x20
@@ -23998,7 +23897,7 @@ initial commit
 +++ lib/smol/test.lua
 @@ -0,0 +1,174 @@
 +
-+local T = require'civtest'.Test
++local T = require'civtest'
 +local smol = require'smol'
 +local S = require'smol.sys'
 +local fbin = require'fmt.binary'
@@ -24010,14 +23909,14 @@ initial commit
 +local sfmt, char = string.format, string.char
 +
 +local function rtest(base, change, expCmd, expText)
-+  print(('!! ### rtest (%q)  (%q)  ->  %q %q'):format(
++  print(('### rtest (%q)  (%q)  ->  %q %q'):format(
 +    base, change, expCmd, expText))
 +  local x = S.createX{fp4po2=14}
 +  local cmds, text = S.rdelta(change, x, base)
-+  print('!! cmds, text:', cmds, text)
-+  io.fmt:write('!! cmds\n')
++  print('cmds, text:', cmds, text)
++  io.fmt:write('cmds\n')
 +  fbin.columns(io.fmt, cmds); io.fmt:write'\n'
-+  io.fmt:write('!! text\n')
++  io.fmt:write('text\n')
 +  fbin.columns(io.fmt, text); io.fmt:write'\n'
 +  T.eq(change, S.rpatch(cmds, text, x, base))
 +  if expCmd then
@@ -24194,38 +24093,38 @@ initial commit
 +local mty = require'metaty'
 +local ds  = require'ds'
 +local lines = require'lines'
-+local test, assertEq; ds.auto'civtest'
++local T = require'civtest'
 +local Diff, Keep, Change; local M = ds.auto'vcds'
 +local push = table.insert
 +
-+test('create anchor', function()
++T.create_anchor = function()
 +  local base = {'1', '1', ' ', '2', '3', '3', ' ', '1', '2'}
-+  assertEq({}, M.createAnchorTop(base, 0, 2))
-+  assertEq({Diff(1, '@', '1')}, M.createAnchorTop(base, 1, 2))
-+  assertEq({
++  T.eq({}, M.createAnchorTop(base, 0, 2))
++  T.eq({Diff(1, '@', '1')}, M.createAnchorTop(base, 1, 2))
++  T.eq({
 +    Diff(1, '@', '1'),
 +    Diff(2, '@', '1'),
 +  }, M.createAnchorTop(base, 2, 2))
-+  assertEq({
++  T.eq({
 +    Diff(2, '@', '1'),
 +    Diff(3, '@', ' '),
 +    Diff(4, '@', '2'),
 +  }, M.createAnchorTop(base, 4, 2))
 +
-+  assertEq({},  M.createAnchorBot(base, 10, 2))
-+  assertEq({Diff(9, '@', '2')}, M.createAnchorBot(base, 9, 2))
-+  assertEq({
++  T.eq({},  M.createAnchorBot(base, 10, 2))
++  T.eq({Diff(9, '@', '2')}, M.createAnchorBot(base, 9, 2))
++  T.eq({
 +    Diff(8, '@', '1'),
 +    Diff(9, '@', '2'),
 +  }, M.createAnchorBot(base, 8, 2))
-+  assertEq({
++  T.eq({
 +    Diff(7, '@', ' '),
 +    Diff(8, '@', '1'),
 +    Diff(9, '@', '2'),
 +  }, M.createAnchorBot(base, 7, 2))
-+end)
++end
 +
-+test('patch', function()
++T.patch = function()
 +  local base = {'2', '2', '2', '5', '5_', '7_', '9'}
 +
 +  local diffs = {
@@ -24250,7 +24149,7 @@ initial commit
 +  push(diffs, Diff(7,  12, '9'))  -- 12 keep
 +
 +  local changes = M.toChanges(diffs)
-+  assertEq({
++  T.eq({
 +    Change{rem=0, add={'1'}},                -- 1
 +    Keep{num=3},                             -- 2,2,2
 +    Change{rem=0, add={'3', '4'}},           -- 3
@@ -24258,10 +24157,10 @@ initial commit
 +    Change{rem=2, add={'6', '7', '8', '9'}}, -- 5
 +    Keep{num=1},
 +  }, changes)
-+  assertEq(diffs, M.toDiffs(base, changes))
++  T.eq(diffs, M.toDiffs(base, changes))
 +
 +  local changesB = M.toChanges(diffs, true)
-+  assertEq({
++  T.eq({
 +    Change{rem={}, add={'1'}},
 +    Keep{'2', '2', '2'},
 +    Change{rem={}, add={'3', '4'}},
@@ -24272,12 +24171,12 @@ initial commit
 +    },
 +    Keep{'9'},
 +  }, changesB)
-+  assertEq(diffs, M.toDiffs(base, changesB))
++  T.eq(diffs, M.toDiffs(base, changesB))
 +
 +  local p = M.Picks(base, changes, {anchorLen=2})
-+  assertEq({1, 1}, {p:groupChanges(1)})
-+  assertEq({3, 5}, {p:groupChanges(2)})
-+  assertEq({
++  T.eq({1, 1}, {p:groupChanges(1)})
++  T.eq({3, 5}, {p:groupChanges(2)})
++  T.eq({
 +    Diff('+',   1, '1'),
 +    Diff(  1, '@', '2'),
 +    Diff(  2, '@', '2'),
@@ -24289,18 +24188,18 @@ initial commit
 +  }
 +  ds.extend(patch, change2)
 +  push(patch, Diff(7, '@', '9'))
-+  assertEq(patch, p())
-+end)
++  T.eq(patch, p())
++end
 +
 +local function findAnchorTest(expectBl, expectLines, base, anchors, above)
 +  local baseMap = lines.map(base)
 +  local aDiffs = {}; for _, a in ipairs(anchors) do
 +    push(aDiffs, Diff(-1, '@', a))
 +  end
-+  assertEq({expectBl, expectLines}, {M.findAnchor(base, baseMap, aDiffs, above)})
++  T.eq({expectBl, expectLines}, {M.findAnchor(base, baseMap, aDiffs, above)})
 +end
 +
-+test('find anchor', function()
++T.find_anchor = function()
 +  local tl = {'a', 'b', 'b', 'c', '', 'd', 'b', 'a'}
 +  -- above
 +  findAnchorTest(1, 2, tl, {'a', 'b'},      true)
@@ -24320,17 +24219,17 @@ initial commit
 +
 +  findAnchorTest(nil, nil, tl, {'a'},       false)
 +  findAnchorTest(nil, nil, tl, {'b'},       false)
-+end)
++end
 +
-+test('create patch', function()
++T.create_patch = function()
 +  local base = {'1', '2', '3', '4', '5', '6', '7'}
 +  local baseMap = lines.map(base)
-+   assertEq(M.Patch{bl=0,
++   T.eq(M.Patch{bl=0,
 +     '0.a',
 +   }, M.createPatch(base, baseMap,
 +     { Diff('+', 1, '0.a') }
 +   ))
-+end)
++end
 
 --- /dev/null
 +++ lib/vcds/vcds.lua
@@ -24740,7 +24639,6 @@ initial commit
 +  dofile(dir..'lib/pegl/tests/test_lua.lua')
 +  dofile(dir..'lib/luck/test.lua')
 +  dofile(dir..'lib/civix/test.lua')
-+  dofile(dir..'lib/civdb/test.lua')
 +  dofile(dir..'lib/smol/test.lua')
 +
 +print'[[apps]]'
@@ -24755,6 +24653,7 @@ initial commit
 +  dofile(dir..'cmd/ele/tests/test_actions.lua')
 +  dofile(dir..'cmd/ele/tests/test_session.lua')
 +
++io.fmt:styled('notify', '\nSuccess! All tests passed', '\n')
 
 --- /dev/null
 +++ testdata/small.txt
@@ -24774,7 +24673,7 @@ initial commit
 
 --- /dev/null
 +++ ui/asciicolor/PKG.lua
-@@ -0,0 +1,17 @@
+@@ -0,0 +1,16 @@
 +name     = 'asciicolor'
 +version  = '0.1-0'
 +url      = 'git+http://github.com/civboot/civlua'
@@ -24788,7 +24687,6 @@ initial commit
 +}
 +srcs = {
 +  'asciicolor.lua',
-+  'asciicolor/style.lua',
 +}
 +
 +
@@ -24811,13 +24709,23 @@ initial commit
 
 --- /dev/null
 +++ ui/asciicolor/asciicolor.lua
-@@ -0,0 +1,47 @@
+@@ -0,0 +1,160 @@
 +-- asciicolor: encode text color and style with a single ascii character
 +local M = mod and mod'asciicolor' or {}
 +
++local shim = require'shim'
 +local mty = require'metaty'
-+local ds  = require'ds'
++local fmt = require'fmt'
++local ds = require'ds'
++local log = require'ds.log'
++local pth = require'ds.path'
++local fd = require'fd'
++local civix = require'civix'
++
++local construct, newindex = mty.construct, mty.newindex
 +local sfmt = string.format
++
++M.CONFIG_PATH = '.config/colors.luck'
 +
 +--- typosafe mapping of asciicode -> fullname
 +---
@@ -24858,31 +24766,7 @@ initial commit
 +  return CODES[ac] or error(sfmt('invalid ascii color: %q', ac))
 +end
 +
-+return M
-
---- /dev/null
-+++ ui/asciicolor/asciicolor/style.lua
-@@ -0,0 +1,121 @@
-+local G = G or _G
-+
-+--- style text from a user's config.
-+local M = G.mod and G.mod'asciicolor.style' or {}
-+
-+local shim = require'shim'
-+local mty = require'metaty'
-+local fmt = require'fmt'
-+local ds = require'ds'
-+local log = require'ds.log'
-+local pth = require'ds.path'
-+local ac = require'asciicolor'
-+local fd = require'fd'
-+local civix = require'civix'
-+
-+local construct, newindex = mty.construct, mty.newindex
-+local sfmt = string.format
-+
-+M.CONFIG_PATH = '.config/colors.luck'
-+
++--- Dark mode styles (defaults)
 +M.dark = {
 +  -- Find tools (i.e. ff)
 +  path  = 'm',  -- file/dir path
@@ -24895,6 +24779,7 @@ initial commit
 +  base   = 'F', basel   = 'Wf', -- base(line),   aka removed text
 +  change = 'G', changel = 'Wg', -- change(line), aka added text
 +  empty  = 'zd',
++  ref    = 'cZ',
 +
 +  -- Document Styles
 +  code = 'hb',
@@ -24904,21 +24789,23 @@ initial commit
 +  -- Code Syntax
 +  api           = 'G', -- api, i.e. public function/class name
 +  type          = 'h', -- type signature
-+  var           = 'g', -- variable name
++  var           = 'G', -- variable name
 +  keyword       = 'R', -- for while do etc
-+  symbol        = 'r', -- = + . etc
++  symbol        = 't', -- = + . { } etc
 +  builtin       = 'p', -- builtin fns/mods/names: io sys self etc
 +  commentbox    = 'bw', -- start/end of comment: -- // /**/ etc
 +  comment       = 'zb', -- content of comment:  /*content*/
 +  stringbox     = 'd', -- start/end of string: '' "" [[]] etc
-+  string        = 'm', -- content of string inside quotes
-+  char          = 'm', -- single character: 'c'
-+  number        = 'm', -- float or integer: 0 1.0 0xFF etc
-+  literal       = 'm', -- other literal: null, bool, date, regex, etc
++  string        = 'g', -- content of string inside quotes
++  key           = 'T', -- key in map/struct/etc
++  char          = 'g', -- single character: 'c'
++  number        = 'N', -- float or integer: 0 1.0 0xFF etc
++  literal       = 'h', -- other literal: null, bool, date, regex, etc
 +  call          = 'c', -- function call: foo()
-+  dispatch      = 'c', -- object.method called: obj.foo(), obj:foo()
++  dispatch      = 'C', -- object.method called: obj.foo(), obj:foo()
 +}
-+-- TODO: light
++
++-- TODO: light-mode styles
 +
 +M.mode = function() return G.CLIMODE or os.getenv'CLIMODE' end
 +
@@ -24982,22 +24869,19 @@ initial commit
 +  return fmt.Fmt(t)
 +end
 +
-+
 +return M
 
 --- /dev/null
 +++ ui/asciicolor/test.lua
-@@ -0,0 +1,44 @@
+@@ -0,0 +1,42 @@
 +METATY_CHECK = true
 +
-+local CT = require'civtest'
-+local T = require'civtest'.Test
++local T = require'civtest'
 +local mty = require'metaty'
 +local fmt = require'fmt'
 +local ds = require'ds'
 +local Writer = require'lines.Writer'
 +local M = require'asciicolor'
-+local S = require'asciicolor.style'
 +
 +local aeq = T.eq
 +
@@ -25030,7 +24914,7 @@ initial commit
 +  aeq('z',  c'z')
 +  aeq('z',  c' ')
 +  aeq('z',  c'')
-+  CT.assertErrorPat('invalid ascii color: "O"', function() c'O' end)
++  T.throws('invalid ascii color: "O"', function() c'O' end)
 +end
 
 --- /dev/null
@@ -25173,14 +25057,13 @@ initial commit
 
 --- /dev/null
 +++ ui/vt100/test.lua
-@@ -0,0 +1,46 @@
+@@ -0,0 +1,45 @@
 +METATY_CHECK = true
 +
 +local M = require'vt100'
 +local T = require'civtest'
 +local mty = require'metaty'
 +local fmt = require'fmt'
-+local assertEq = T.assertEq
 +local ac = require'asciicolor'
 +
 +local assertHasAsciiColors = function(c)
@@ -25188,42 +25071,42 @@ initial commit
 +    fmt.assertf(c[name], 'missing %q', name)
 +  end
 +end
-+T.test('color', function()
++T.color = function()
 +  assertHasAsciiColors(M.FgColor)
 +  assertHasAsciiColors(M.BgColor)
-+end)
++end
 +
-+T.test('literal', function()
++T.literal = function()
 +  local l = M.literal
-+  assertEq('a',  l'a')
-+  assertEq('\n', l'return')
-+  assertEq(nil,  l'invalid')
-+end)
++  T.eq('a',  l'a')
++  T.eq('\n', l'return')
++  T.eq(nil,  l'invalid')
++end
 +
-+T.test('keyError', function()
++T.keyError = function()
 +  local ke = M.keyError
-+  assertEq(nil, ke'a')
-+  assertEq(nil, ke'esc')
-+  assertEq(nil, ke'^a')
-+  assertEq(nil, ke'😜')
-+  assertEq('invalid key: "escape"', ke'escape')
-+  assertEq([[key "\8" not a printable character]], ke'\x08')
-+end)
++  T.eq(nil, ke'a')
++  T.eq(nil, ke'esc')
++  T.eq(nil, ke'^a')
++  T.eq(nil, ke'😜')
++  T.eq('invalid key: "escape"', ke'escape')
++  T.eq([[key "\8" not a printable character]], ke'\x08')
++end
 +
-+T.test('keynice', function()
++T.keynice = function()
 +  local key, b = M.key, string.byte
-+  assertEq('a',      key(b'a'))
-+  assertEq('^a',     key(1))
-+  assertEq('tab',    key(9))
-+  assertEq('^j',     key(10))
-+  assertEq('return', key(13))
-+  assertEq('space',  key(32))
-+  assertEq('^z',     key(26))
-+end)
++  T.eq('a',      key(b'a'))
++  T.eq('^a',     key(1))
++  T.eq('tab',    key(9))
++  T.eq('^j',     key(10))
++  T.eq('return', key(13))
++  T.eq('space',  key(32))
++  T.eq('^z',     key(26))
++end
 
 --- /dev/null
 +++ ui/vt100/vt100.lua
-@@ -0,0 +1,430 @@
+@@ -0,0 +1,429 @@
 +local G = G or _G
 +--- Civboot vt100 Terminal library that supports LAP protocol.
 +--- Module for interacting with the vt100 via keys and AsciiColors.
@@ -25240,7 +25123,6 @@ initial commit
 +local log = require'ds.log'
 +local d8  = require'ds.utf8'
 +local acolor = require'asciicolor'
-+local style = require'asciicolor.style'
 +
 +local min = math.min
 +local char, byte, slen = string.char, string.byte, string.len
@@ -25664,7 +25546,7 @@ initial commit
 +local colorFB = require'vt100'.colorFB
 +
 +--- A file-like writer which keeps track of fg and bg colors,
-+--- typically used with [<#asciicolor.style.Styler>]
++--- typically used with [<#asciicolor.Styler>]
 +local AcWriter = mty'vt100.AcWriter' {
 +  'f  [file]',
 +  'fg [string]: current foreground ac letter', fg='z',
@@ -25736,16 +25618,16 @@ initial commit
 +    fd.stdin:toNonblock()
 +
 +    -- send size request and wait until it is recieved
-+    T.assertEq({true, 'forget'}, {ds.resume(szTh)})
-+    T.assertEq(szTh, t._waiting)
++    T.eq({true, 'forget'}, {ds.resume(szTh)})
++    T.eq(szTh, t._waiting)
 +
 +    while t._waiting do
-+      T.assertEq({true, 'poll', 0, fd.sys.POLLIN}, {ds.resume(inTh)})
++      T.eq({true, 'poll', 0, fd.sys.POLLIN}, {ds.resume(inTh)})
 +    end
-+    T.assertEq(nil, t._waiting)
-+    T.assertEq(nil, r())
-+    T.assertEq({true}, {ds.resume(szTh)})
-+    T.assertEq('dead', coroutine.status(szTh))
++    T.eq(nil, t._waiting)
++    T.eq(nil, r())
++    T.eq({true}, {ds.resume(szTh)})
++    T.eq('dead', coroutine.status(szTh))
 +
 +    log.info('term size: %s %s', t.h, t.w)
 +    fn(t)

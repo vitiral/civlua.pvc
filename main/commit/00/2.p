@@ -1,80 +1,31 @@
-branchPath -> branchDir
---- cmd/pvc/pvc.lua
-+++ cmd/pvc/pvc.lua
-@@ -248 +248 @@
--M.branchPath = function(pdir, branch, dot)
-+M.branchDir = function(pdir, branch, dot)
-@@ -301 +301 @@
--  local bpath = M.branchPath(pdir, br)
-+  local bpath = M.branchDir(pdir, br)
-@@ -374 +374 @@
--  local npath = M.branchPath(pdir, nbr)
-+  local npath = M.branchDir(pdir, nbr)
-@@ -456 +456 @@
--  return br, id, M.branchPath(P, br)
-+  return br, id, M.branchDir(P, br)
-@@ -485 +485 @@
--  initBranch(M.branchPath(pdir, branch), 0)
-+  initBranch(M.branchDir(pdir, branch), 0)
-@@ -512 +512 @@
--  local bp, cid = M.branchPath(pdir, br), id+1
-+  local bp, cid = M.branchDir(pdir, br), id+1
-@@ -541 +541 @@
--  return br, id or bid or M.rawtip(M.branchPath(pdir, br))
-+  return br, id or bid or M.rawtip(M.branchDir(pdir, br))
-@@ -545 +545 @@
--  local fpath = M.branchPath(pdir, fbr)
-+  local fpath = M.branchDir(pdir, fbr)
-@@ -548 +548 @@
--  local npath = M.branchPath(pdir, name)
-+  local npath = M.branchDir(pdir, name)
-@@ -579 +579 @@
--    local bt = M.rawtip(M.branchPath(pdir, bbr))
-+    local bt = M.rawtip(M.branchDir(pdir, bbr))
-@@ -637 +637 @@
--  local cpath = M.branchPath(pdir, cbr)
-+  local cpath = M.branchDir(pdir, cbr)
-@@ -643 +643 @@
--  local bpath = M.branchPath(pdir, bbr)
-+  local bpath = M.branchDir(pdir, bbr)
-@@ -647 +647 @@
--  local cpath, cid = M.branchPath(pdir, cbr), bid + 1
-+  local cpath, cid = M.branchDir(pdir, cbr), bid + 1
-@@ -650 +650 @@
--  local tpath      = M.branchPath(pdir, tbr)
-+  local tpath      = M.branchDir(pdir, tbr)
-@@ -696 +696 @@
--  local fbr, fdir = assert(from, 'must set from'), M.branchPath(P, from)
-+  local fbr, fdir = assert(from, 'must set from'), M.branchDir(P, from)
-@@ -703 +703 @@
--  local tdir = M.branchPath(P, tbr)
-+  local tdir = M.branchDir(P, tbr)
-@@ -750 +750 @@
--  local bdir = M.branchPath(P, br)
-+  local bdir = M.branchDir(P, br)
-@@ -859 +859 @@
--    M.rawtip(M.branchPath(P, args[1] or M.rawat(P))))
-+    M.rawtip(M.branchDir(P, args[1] or M.rawat(P))))
-@@ -897 +897 @@
--        local bdir = M.branchPath(D, br)
-+        local bdir = M.branchDir(D, br)
-@@ -908 +908 @@
--  local num, dir = toint(args.num or 10), M.branchPath(D, br)
-+  local num, dir = toint(args.num or 10), M.branchDir(D, br)
-@@ -914 +914 @@
--      br, dir = bbr, M.branchPath(D, bbr)
-+      br, dir = bbr, M.branchDir(D, bbr)
-@@ -985 +985 @@
--  local base = M.getbase(M.branchPath(P,br))
-+  local base = M.getbase(M.branchDir(P,br))
-@@ -999 +999 @@
--  local bdir = M.branchPath(D, br)
-+  local bdir = M.branchDir(D, br)
-@@ -1033 +1033 @@
--  local bdir = M.branchPath(D, br)
-+  local bdir = M.branchDir(D, br)
-
---- lib/civix/civix/lib.c
-+++ lib/civix/civix/lib.c
-@@ -185 +184,0 @@
--  printf("!! stat_size %i\n", st->st_size);
+update docs for patch/ -> commit/
+--- cmd/pvc/README.cxt
++++ cmd/pvc/README.cxt
+@@ -112 +112 @@
+-  [$.pvc/main/patch/.../1.p].
++  [$.pvc/main/commit/.../1.p].
+@@ -145 +145 @@
+-  patches/branches/whatever here.
++  commits/branches/whatever here.
+@@ -205 +205 @@
+-  contains the [$patch/] directory (described in [*commit]) and the plain-text files:
++  contains the [$commit/] directory (described in [*commit]) and the plain-text files:
+@@ -209 +209 @@
+-  * [*tip]: contains an ascii decimal number, representing the last patch id.
++  * [*tip]: contains an ascii decimal number, representing the last commit id.
+@@ -216,2 +216,2 @@
+-* [*commit (noun)]: refers to a single patch file inside of [$.pvc/branch/patch/.../123.p]. [+
+-  * The length of [$patch/.../] is stored in [$patch/depth] which is an ascii
++* [*commit (noun)]: refers to a single patch file (i.e. [$.pvc/branch/commit/.../123.p]). [+
++  * The length of [$commit/.../] is stored in [$commit/depth] which is an ascii
+@@ -220 +220 @@
+-    [$patch/00/00/12.p] and store [$123456.p] in [$12/34/123456.p].
++    [$commit/00/00/12.p] and store [$123456.p] in [$12/34/123456.p].
+@@ -234 +234 @@
+-   current directory and store it as a patch file in the branch's [$patch/]
++   current directory and store it as a patch file in the branch's [$commit/]
+@@ -238,2 +238,2 @@
+-  is a directory which uses the extension [$.snap/] inside of the patch
+-  directory, i.e. [$patch/00/123.snap/].
++  is a directory which uses the extension [$.snap/] inside of the [$commit/]
++  directory, i.e. [$commit/00/123.snap/].
